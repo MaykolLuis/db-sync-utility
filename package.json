@@ -26,6 +26,10 @@
     "appId": "com.db-sync-utility.app",
     "productName": "DB Sync Utility",
     "copyright": "Copyright © 2024 MaykolLuis",
+    "asar": true,
+    "compression": "normal",
+    "nodeGypRebuild": false,
+    "buildDependenciesFromSource": false,
     "files": [
       "electron/**/*",
       "out/**/*",
@@ -35,7 +39,13 @@
       "!node_modules/**/.bin/**/*",
       "!node_modules/**/docs/**/*",
       "!node_modules/**/example/**/*",
-      "!node_modules/**/examples/**/*"
+      "!node_modules/**/examples/**/*",
+      "!node_modules/@next/swc-darwin-*/**/*",
+      "!node_modules/@next/swc-linux-*/**/*",
+      "!node_modules/@next/swc-freebsd-*/**/*",
+      "!node_modules/**/*-darwin-*/**/*",
+      "!node_modules/**/*-linux-*/**/*",
+      "!node_modules/**/*-freebsd-*/**/*"
     ],
     "asarUnpack": [
       "electron/**/*",
@@ -102,12 +112,7 @@
       "installerHeaderIcon": "assets/icon.ico",
       "deleteAppDataOnUninstall": false,
       "displayLanguageSelector": false
-    },
-    "asar": false,
-    "compression": "normal",
-    "publish": null,
-    "buildDependenciesFromSource": false,
-    "nodeGypRebuild": false
+    }
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
