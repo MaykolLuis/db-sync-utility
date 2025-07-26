@@ -24,7 +24,9 @@ export function formatFileSize(bytes: number): string {
   // Make sure we don't exceed the array bounds
   const sizeIndex = Math.min(i, sizes.length - 1);
   
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[sizeIndex];
+  const value = bytes / Math.pow(k, i);
+  const formattedValue = value % 1 === 0 ? value.toString() : value.toFixed(1);
+  return formattedValue + ' ' + sizes[sizeIndex];
 }
 
 /**

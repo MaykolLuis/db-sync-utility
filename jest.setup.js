@@ -1,22 +1,29 @@
-import '@testing-library/jest-dom'
+require('@testing-library/jest-dom')
 
 // Mock Electron APIs for testing
 global.window = global.window || {}
 global.window.electron = {
   // Mock Electron IPC methods
-  openDirectoryDialog: jest.fn(),
-  copyFiles: jest.fn(),
-  checkPathAccess: jest.fn(),
-  checkFileInUse: jest.fn(),
-  createBackup: jest.fn(),
-  loadTargetLocations: jest.fn(),
-  saveTargetLocations: jest.fn(),
-  loadSettings: jest.fn(),
-  saveSettings: jest.fn(),
-  loadHistoryEntries: jest.fn(),
-  saveHistoryEntries: jest.fn(),
-  openFolderPath: jest.fn(),
-  openFile: jest.fn(),
+  openDirectoryDialog: jest.fn().mockResolvedValue({ success: true, path: '/mock/path' }),
+  copyFiles: jest.fn().mockResolvedValue({ success: true, copiedFiles: [] }),
+  checkPathAccess: jest.fn().mockResolvedValue({ success: true, readable: true, writable: true }),
+  checkFileInUse: jest.fn().mockResolvedValue({ success: true, inUse: false }),
+  createBackup: jest.fn().mockResolvedValue({ success: true, backupPath: '/mock/backup' }),
+  loadTargetLocations: jest.fn().mockResolvedValue([]),
+  saveTargetLocations: jest.fn().mockResolvedValue({ success: true }),
+  loadSettings: jest.fn().mockResolvedValue({}),
+  saveSettings: jest.fn().mockResolvedValue({ success: true }),
+  loadHistoryEntries: jest.fn().mockResolvedValue([]),
+  saveHistoryEntries: jest.fn().mockResolvedValue({ success: true }),
+  openFolderPath: jest.fn().mockResolvedValue({ success: true }),
+  openFile: jest.fn().mockResolvedValue({ success: true }),
+  // Additional missing methods
+  readJsonFile: jest.fn().mockResolvedValue({ success: true, data: [] }),
+  writeJsonFile: jest.fn().mockResolvedValue({ success: true }),
+  getDirectorySize: jest.fn().mockResolvedValue({ success: true, size: 1024 }),
+  createSingleBackup: jest.fn().mockResolvedValue({ success: true, backupPath: '/mock/backup' }),
+  showSaveDialog: jest.fn().mockResolvedValue({ success: true, filePath: '/mock/save/path' }),
+  showOpenDialog: jest.fn().mockResolvedValue({ success: true, filePaths: ['/mock/open/path'] }),
 }
 
 // Mock localStorage

@@ -3,30 +3,36 @@
  * Tests the auto-save and recovery functionality
  */
 
-import { useAutoRecoveryStore } from '@/lib/stores/use-auto-recovery-store'
-
-// Mock the store to avoid Next.js dependency issues in Jest
-jest.mock('@/lib/stores/use-auto-recovery-store', () => ({
-  useAutoRecoveryStore: {
-    getState: jest.fn().mockReturnValue({
-      saveTargetLocationsState: jest.fn(),
-      saveSourceDirectoryState: jest.fn(),
-      getRecoveryData: jest.fn().mockReturnValue({
-        data: {
-          targetLocations: {
-            hasUnsavedChanges: true,
-            currentLocations: [{ id: 'test', name: 'Test', path: 'C:\\test', selected: true }]
-          },
-          sourceDirectory: {
-            path: 'C:\\source',
-            hasValidFiles: true
-          }
+// Mock the auto-recovery store completely to avoid import issues
+const mockAutoRecoveryStore = {
+  getState: jest.fn().mockReturnValue({
+    saveTargetLocationsState: jest.fn(),
+    saveSourceDirectoryState: jest.fn(),
+    getRecoveryData: jest.fn().mockReturnValue({
+      data: {
+        targetLocations: {
+          hasUnsavedChanges: true,
+          currentLocations: [{ id: 'test', name: 'Test', path: 'C:\\test', selected: true }]
+        },
+        sourceDirectory: {
+          path: 'C:\\source',
+          hasValidFiles: true
         }
-      }),
-      clearRecoveryData: jest.fn()
-    })
-  }
-}))
+      }
+    }),
+    clearRecoveryData: jest.fn()
+  })
+};
+
+// Mock the store module
+jest.mock('../lib/stores/use-auto-recovery-store', () => ({
+  useAutoRecoveryStore: mockAutoRecoveryStore
+}));
+
+// Also mock with @ alias path
+jest.mock('@/lib/stores/use-auto-recovery-store', () => ({
+  useAutoRecoveryStore: mockAutoRecoveryStore
+}));
 
 // Mock data for testing
 const mockTargetLocations = [
@@ -256,9 +262,12 @@ if (typeof window !== 'undefined') {
   console.log('   - window.testAutoRecovery.testRecovery()')
 }
 
+// Import the mocked store
+const { useAutoRecoveryStore } = require('../lib/stores/use-auto-recovery-store');
+
 // Jest test suite
 describe('Auto Recovery System', () => {
-  const store = useAutoRecoveryStore.getState();
+  const store = mockAutoRecoveryStore.getState();
   
   beforeEach(() => {
     jest.clearAllMocks();

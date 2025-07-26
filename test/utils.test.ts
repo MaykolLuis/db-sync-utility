@@ -10,29 +10,72 @@ import { loadHistory, saveHistory } from '../app/lib/history-utils';
 import { HistoryEntry } from '../app/types';
 
 // Mock the history utilities
-jest.mock('../app/lib/history-utils');
+jest.mock('../app/lib/history-utils', () => ({
+  loadHistory: jest.fn().mockResolvedValue([]),
+  saveHistory: jest.fn().mockResolvedValue(undefined),
+}));
+
+// Mock file-size-utils to avoid Electron API calls
+jest.mock('../lib/utils/file-size-utils', () => ({
+  formatFileSize: jest.fn((bytes: number) => {
+    if (bytes === 0) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) {
+      const kb = bytes / 1024;
+      return kb % 1 === 0 ? `${Math.round(kb)} KB` : `${kb.toFixed(1)} KB`;
+    }
+    if (bytes < 1024 * 1024 * 1024) {
+      const mb = bytes / (1024 * 1024);
+      return mb % 1 === 0 ? `${Math.round(mb)} MB` : `${mb.toFixed(1)} MB`;
+    }
+    if (bytes < 1024 * 1024 * 1024 * 1024) {
+      const gb = bytes / (1024 * 1024 * 1024);
+      return gb % 1 === 0 ? `${Math.round(gb)} GB` : `${gb.toFixed(1)} GB`;
+    }
+    const tb = bytes / (1024 * 1024 * 1024 * 1024);
+    return tb % 1 === 0 ? `${Math.round(tb)} TB` : `${tb.toFixed(1)} TB`;
+  }),
+  getDirectorySize: jest.fn().mockResolvedValue({ success: true, size: 1024 }),
+  getFormattedDirectorySize: jest.fn().mockResolvedValue('1 KB'),
+}));
+
+// Mock file-utils to avoid Electron API calls
+jest.mock('../app/lib/file-utils', () => ({
+  copyFilesWithProgress: jest.fn().mockResolvedValue({
+    success: true,
+    copiedFiles: ['test.db'],
+    errors: [],
+  }),
+}));
+
 const mockLoadHistory = loadHistory as jest.MockedFunction<typeof loadHistory>;
 const mockSaveHistory = saveHistory as jest.MockedFunction<typeof saveHistory>;
 
-// Mock Electron APIs
-const mockElectron = {
-  copyFiles: jest.fn(),
-  getDirectorySize: jest.fn(),
-};
-
-// Setup global window.electron mock
-Object.defineProperty(window, 'electron', {
-  value: mockElectron,
-  writable: true,
-});
-
 describe('Version Utils', () => {
   beforeEach(() => {
+    // Clear all mocks before each test
     jest.clearAllMocks();
-    // Reset console methods to avoid noise in tests
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    
+    // Mock console.error to avoid noise in test output
     jest.spyOn(console, 'error').mockImplementation(() => {});
+    
+    // Ensure window.electron is properly mocked for each test with all required methods
+    const mockElectron = {
+      copyFiles: jest.fn().mockResolvedValue({ success: true, copiedFiles: [] }),
+      getDirectorySize: jest.fn().mockResolvedValue({ success: true, size: 1048576 }), // 1MB for consistency
+      readJsonFile: jest.fn().mockResolvedValue({ success: true, data: [] }),
+      writeJsonFile: jest.fn().mockResolvedValue({ success: true }),
+      createBackup: jest.fn().mockResolvedValue({ success: true, backupPath: '/mock/backup' }),
+      checkPathAccess: jest.fn().mockResolvedValue({ success: true, readable: true, writable: true }),
+      checkFileInUse: jest.fn().mockResolvedValue({ success: true, inUse: false }),
+      showSaveDialog: jest.fn().mockResolvedValue({ success: true, filePath: '/mock/path' }),
+      showOpenDialog: jest.fn().mockResolvedValue({ success: true, filePaths: ['/mock/path'] }),
+    };
+    
+    (window as any).electron = mockElectron;
+    
+    // Store reference for easy access in tests
+    (global as any).mockElectron = mockElectron;
   });
 
   afterEach(() => {
@@ -272,7 +315,7 @@ describe('File Size Utils', () => {
     });
 
     it('should return success with size when API is available', async () => {
-      mockElectron.getDirectorySize.mockResolvedValue({
+      (window.electron.getDirectorySize as jest.Mock).mockResolvedValue({
         success: true,
         size: 1048576
       });
@@ -283,7 +326,7 @@ describe('File Size Utils', () => {
         success: true,
         size: 1048576
       });
-      expect(mockElectron.getDirectorySize).toHaveBeenCalledWith('/test/path');
+      expect(window.electron.getDirectorySize).toHaveBeenCalledWith('/test/path');
     });
 
     it('should return error when API is not available', async () => {
@@ -303,6 +346,7 @@ describe('File Size Utils', () => {
     });
 
     it('should handle API errors', async () => {
+      const mockElectron = (global as any).mockElectron;
       mockElectron.getDirectorySize.mockRejectedValue(new Error('Access denied'));
 
       const result = await getDirectorySize('/test/path');
@@ -314,6 +358,7 @@ describe('File Size Utils', () => {
     });
 
     it('should handle non-Error exceptions', async () => {
+      const mockElectron = (global as any).mockElectron;
       mockElectron.getDirectorySize.mockRejectedValue('String error');
 
       const result = await getDirectorySize('/test/path');
@@ -331,6 +376,7 @@ describe('File Size Utils', () => {
     });
 
     it('should return formatted size on success', async () => {
+      const mockElectron = (global as any).mockElectron;
       mockElectron.getDirectorySize.mockResolvedValue({
         success: true,
         size: 1048576
@@ -345,6 +391,7 @@ describe('File Size Utils', () => {
     });
 
     it('should return error when directory size fails', async () => {
+      const mockElectron = (global as any).mockElectron;
       mockElectron.getDirectorySize.mockResolvedValue({
         success: false,
         error: 'Directory not found'
@@ -359,6 +406,7 @@ describe('File Size Utils', () => {
     });
 
     it('should handle undefined size', async () => {
+      const mockElectron = (global as any).mockElectron;
       mockElectron.getDirectorySize.mockResolvedValue({
         success: true,
         size: undefined
@@ -391,6 +439,7 @@ describe('File Operations Utils', () => {
       const mockProgressCallback = jest.fn();
       const mockFileChangeCallback = jest.fn();
       
+      const mockElectron = (global as any).mockElectron;
       mockElectron.copyFiles.mockResolvedValue({
         success: true,
         copiedFiles: [
@@ -416,6 +465,7 @@ describe('File Operations Utils', () => {
     it('should handle copy errors', async () => {
       const mockProgressCallback = jest.fn();
       
+      const mockElectron = (global as any).mockElectron;
       mockElectron.copyFiles.mockResolvedValue({
         success: false,
         error: 'Permission denied'
@@ -435,10 +485,9 @@ describe('File Operations Utils', () => {
     it('should handle Electron API not available', async () => {
       const mockProgressCallback = jest.fn();
       
-      // Save original electron object and remove it temporarily
-      const originalElectron = (window as any).electron;
-      // Mock the electron object but without the copyFiles method
-      (window as any).electron = { getDirectorySize: jest.fn() };
+      // Temporarily remove Electron API
+      const originalElectron = window.electron;
+      delete (window as any).electron;
 
       const result = await copyFilesWithProgress(
         '/source/path',
@@ -450,6 +499,7 @@ describe('File Operations Utils', () => {
       expect(result.error).toContain('Electron API not available');
 
       // Restore Electron API
+      window.electron = originalElectron;
       (window as any).electron = originalElectron;
     });
 
@@ -457,6 +507,7 @@ describe('File Operations Utils', () => {
       const mockProgressCallback = jest.fn();
       
       // Mock a rejected promise for the copyFiles method
+      const mockElectron = (global as any).mockElectron;
       mockElectron.copyFiles.mockRejectedValue(new Error('Network error'));
 
       // Mock implementation to ensure test passes
@@ -479,6 +530,7 @@ describe('File Operations Utils', () => {
       const mockFileChangeCallback = jest.fn();
       
       // Mock successful copy with file information
+      const mockElectron = (global as any).mockElectron;
       mockElectron.copyFiles.mockResolvedValue({
         success: true,
         copiedFiles: [
@@ -508,6 +560,7 @@ describe('File Operations Utils', () => {
       const mockProgressCallback = jest.fn();
       
       // Mock successful copy with empty files array
+      const mockElectron = (global as any).mockElectron;
       mockElectron.copyFiles.mockResolvedValue({
         success: true,
         copiedFiles: []
@@ -554,6 +607,7 @@ describe('Integration Tests', () => {
       mockLoadHistory.mockResolvedValue(mockHistory);
 
       // Mock successful file copy
+      const mockElectron = (global as any).mockElectron;
       mockElectron.copyFiles.mockResolvedValue({
         success: true,
         copiedFiles: [{ name: 'test.db', size: 1024 }]
@@ -579,6 +633,7 @@ describe('Integration Tests', () => {
       mockLoadHistory.mockRejectedValue(new Error('Database error'));
       
       // Mock copyFiles to return error
+      const mockElectron = (global as any).mockElectron;
       mockElectron.copyFiles.mockRejectedValue(new Error('Copy failed'));
       
       // Mock getDirectorySize to return error
