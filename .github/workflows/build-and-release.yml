@@ -2,10 +2,9 @@ name: Build and Release Electron App
 
 on:
   push:
-    branches: [ main, master ]
-    tags: [ 'v*' ]
+    branches: [ master, main ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ master, main ]
   workflow_dispatch:
 
 jobs:
@@ -16,7 +15,14 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
-        
+        include:
+          - os: windows-latest
+            platform: win
+          - os: macos-latest
+            platform: mac
+          - os: ubuntu-latest
+            platform: linux
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -36,7 +42,9 @@ jobs:
       shell: bash
         
     - name: Install dependencies
-      run: npm ci
+      run: |
+        npm ci
+        npm ls --depth=0
       
     - name: Create data directory
       run: |
@@ -53,54 +61,34 @@ jobs:
     - name: Build Next.js app
       run: npm run build
       
+    - name: Build Electron app
+      run: npm run electron:build:${{ matrix.platform }}
+      env:
+        DEBUG: electron-builder
+        DEBUG_COLORS: true
+        CSC_IDENTITY_AUTO_DISCOVERY: false
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
     - name: List build output
       run: |
-        echo "Build output:"
-        ls -la out/ || echo "No out directory"
-        ls -la .next/ || echo "No .next directory"
+        echo "Build completed, listing output:"
+        ls -la dist/ || echo "No dist directory found"
+        find . -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" 2>/dev/null || echo "No build artifacts found"
+        echo "Checking for any error logs:"
+        find . -name "*.log" -exec echo "Found log: {}" \; -exec cat {} \; 2>/dev/null || echo "No log files found"
       shell: bash
       
-    - name: Build Electron app (Windows)
-      if: matrix.os == 'windows-latest'
-      run: npm run electron:build:win
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        DEBUG: electron-builder
-        
-    - name: Build Electron app (macOS)
-      if: matrix.os == 'macos-latest'
-      run: npm run electron:build:mac
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        CSC_IDENTITY_AUTO_DISCOVERY: false
-        DEBUG: electron-builder
-        
-    - name: Build Electron app (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      run: npm run electron:build:linux
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        DEBUG: electron-builder
-        
-    - name: Upload Windows artifacts
-      if: matrix.os == 'windows-latest'
+    - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: windows-build
+        name: electron-app-${{ matrix.platform }}
         path: |
           dist/*.exe
-          dist/*.msi
-          dist/*.zip
-        retention-days: 30
-        
-    - name: Upload macOS artifacts
-      if: matrix.os == 'macos-latest'
-      uses: actions/upload-artifact@v4
-      with:
-        name: macos-build
-        path: |
           dist/*.dmg
-          dist/*.zip
+          dist/*.AppImage
+          dist/*.deb
+          dist/*.rpm
+          dist/*.tar.gz
         retention-days: 30
         
     - name: Upload Linux artifacts
