@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>DB Sync Utility</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      background: linear-gradient(135deg, #111827 0%, #1f2937 35%, #000000 100%);
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      border-radius: 12px;
+    }
+    
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    
+    .logo-container {
+      position: relative;
+      display: inline-block;
+      margin-bottom: 3rem;
+      animation: logoEntrance 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+      transform: scale(0) rotate(-180deg);
+      opacity: 0;
+    }
+    
+    .logo-main {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+      animation: logoGlow 2.5s ease-in-out infinite 1.8s;
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+    }
+    
+    .logo-main svg {
+      width: 50px;
+      height: 50px;
+      color: white;
+      z-index: 2;
+      position: relative;
+    }
+    
+    .logo-ring {
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      right: -10px;
+      bottom: -10px;
+      border: 2px solid rgba(239, 68, 68, 0.3);
+      border-radius: 30px;
+      animation: logoRotate 8s linear infinite 2s;
+      opacity: 0;
+      animation-fill-mode: both;
+    }
+    
+    .loading-ring {
+      position: absolute;
+      top: -15px;
+      left: -15px;
+      right: -15px;
+      bottom: -15px;
+      border: 3px solid transparent;
+      border-top: 3px solid rgba(239, 68, 68, 0.6);
+      border-right: 3px solid rgba(239, 68, 68, 0.4);
+      border-radius: 35px;
+      animation: spin 2s linear infinite 1.5s, fadeInRing 0.5s ease-out 1.5s both;
+      opacity: 0;
+    }
+    
+    .title {
+      margin: 0;
+      font-size: 1.75rem;
+      font-weight: 600;
+      background: linear-gradient(90deg, #ffffff, #e0e0e0);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      letter-spacing: 0.5px;
+      margin-bottom: 0.5rem;
+      text-align: center;
+      animation: titleFadeIn 1s ease-out 1.2s both;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    
+    .subtitle {
+      color: #9ca3af;
+      font-size: 0.875rem;
+      margin-bottom: 2rem;
+      text-align: center;
+      font-weight: 400;
+      letter-spacing: 0.3px;
+      animation: subtitleFadeIn 1s ease-out 1.6s both;
+      opacity: 0;
+      transform: translateY(15px);
+    }
+    
+    .progress-container {
+      width: 240px;
+      height: 4px;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      animation: progressContainerFadeIn 0.8s ease-out 2s both;
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #e11d48, #f43f5e);
+      border-radius: 4px;
+      animation: progress 3.5s ease-out forwards 0.5s;
+      box-shadow: 0 0 10px rgba(225, 29, 72, 0.5);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .progress-bar::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      animation: progressShine 2s ease-in-out infinite 2s;
+    }
+    
+    @keyframes logoEntrance {
+      0% {
+        transform: scale(0);
+        opacity: 0;
+      }
+      60% {
+        transform: scale(1.1);
+        opacity: 0.8;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+    
+    @keyframes logoGlow {
+      0%, 100% {
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.3), 0 0 40px rgba(239, 68, 68, 0.1);
+        transform: scale(1);
+      }
+      50% {
+        box-shadow: 0 0 40px rgba(239, 68, 68, 0.6), 0 0 80px rgba(239, 68, 68, 0.2);
+        transform: scale(1.02);
+      }
+    }
+    
+
+    @keyframes progress {
+      0% {
+        width: 0%;
+      }
+      20% {
+        width: 15%;
+      }
+      40% {
+        width: 35%;
+      }
+      60% {
+        width: 60%;
+      }
+      80% {
+        width: 85%;
+      }
+      100% {
+        width: 100%;
+      }
+    }
+    
+
+    
+    @keyframes progressShine {
+      0% {
+        left: -100%;
+      }
+      100% {
+        left: 100%;
+      }
+    }
+    
+    @keyframes titleFadeIn {
+      0% {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes subtitleFadeIn {
+      0% {
+        opacity: 0;
+        transform: translateY(15px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes progressContainerFadeIn {
+      0% {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo-container">
+      <div class="logo-main">
+        <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+          <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+          <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+        </svg>
+      </div>
+      <div class="logo-ring"></div>
+      <div class="loading-ring"></div>
+    </div>
+    <div class="title">DB Sync Utility</div>
+    <div class="subtitle">Načítání aplikace...</div>
+    <div class="progress-container">
+      <div class="progress-bar"></div>
+    </div>
+  </div>
+</body>
+</html>

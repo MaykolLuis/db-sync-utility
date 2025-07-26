@@ -1,0 +1,434 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Electron window styling */
+:root {
+  --window-border-color: #000000;
+}
+
+/* Custom title bar and window styling for Electron */
+body.in-electron {
+  border: 1px solid var(--window-border-color);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.title-bar {
+  height: 30px;
+  background-color: #151010;
+  color: #FFFFFF;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  -webkit-app-region: drag;
+  padding: 0 10px;
+  width: 100%;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.title-bar-text {
+  color: #ffffff;
+  font-size: 12px;
+  margin-left: 5px;
+  font-weight: 500;
+}
+
+/* Window control buttons - clean implementation */
+.window-controls {
+  display: flex;
+  -webkit-app-region: no-drag;
+}
+
+/* Base styles for all window control buttons */
+.window-control-button {
+  width: 40px;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+  outline: none;
+  position: relative;
+  margin-left: 1px;
+  z-index: 9999;
+}
+
+/* SVG icons inside buttons */
+
+/* Logo styling for title bar */
+.logo {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-bg {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #e11d48 0%, transparent 70%);
+  opacity: 0.6;
+  filter: blur(8px);
+  z-index: 1;
+  transform: scale(0.5);
+}
+.window-control-button svg {
+  width: 12px;
+  height: 12px;
+}
+
+.window-control-button svg path {
+  fill: #FFFFFF;
+}
+
+/* Individual button styles with increased specificity */
+/* Minimize */
+button#minimize-button.window-control-button:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+}
+
+button#minimize-button.window-control-button:active {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+}
+
+/* Maximize */
+button#maximize-button.window-control-button:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+}
+
+button#maximize-button.window-control-button:active {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+}
+
+/* Close */
+button#close-button.window-control-button:hover {
+  background-color: var(--bfi-red) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+}
+
+button#close-button.window-control-button:active {
+  background-color: var(--bfi-red-dark) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+}
+
+.electron-only {
+  display: none;
+}
+
+body.in-electron .electron-only {
+  display: block;
+}
+
+:root {
+  /* BFI Brand Colors - Updated */
+  --bfi-red: #e11d48;
+  --bfi-red-dark: #be123c;
+  --bfi-red-light: #f43f5e;
+  --bfi-blue: #3b8ac4;
+  --bfi-gray: #6d6e71;
+  --bfi-dark-gray: #09090b;
+  --bfi-light-gray: #f5f5f5;
+
+  /* Dark Theme - Base colors - Matched with login page */
+  --background: 0 0% 4%;
+  --foreground: 0 0% 100%;
+
+  /* Card colors */
+  --card: 0 0% 7%;
+  --card-foreground: 0 0% 100%;
+
+  /* Popover colors */
+  --popover: 0 0% 4%;
+  --popover-foreground: 0 0% 100%;
+
+  /* Primary colors - BFI Red */
+  --primary: 336 81% 36%;
+  --primary-foreground: 0 0% 100%;
+
+  /* Secondary colors - BFI Blue */
+  --secondary: 207 54% 50%;
+  --secondary-foreground: 0 0% 100%;
+
+  /* Muted colors */
+  --muted: 217 19% 27%;
+  --muted-foreground: 215 20% 65%;
+
+  /* Accent colors - BFI Gray */
+  --accent: 217 19% 27%;
+  --accent-foreground: 210 40% 98%;
+
+  /* Destructive colors */
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* Border colors */
+  --border: 217 19% 27%;
+
+  /* Input colors */
+  --input: 217 19% 27%;
+
+  /* Ring colors */
+  --ring: 336 81% 36%;
+
+  /* Radius */
+  --radius: 0.75rem;
+  
+  /* Shadow */
+  --shadow-color: 336 81% 36%;
+  --shadow-sm: 0 2px 8px -2px rgba(var(--shadow-color), 0.1);
+  --shadow-md: 0 4px 12px -2px rgba(var(--shadow-color), 0.15);
+  --shadow-lg: 0 12px 24px -4px rgba(var(--shadow-color), 0.25);
+}
+
+.dark {
+  --background: 240 10% 4%;
+  --foreground: 0 0% 95%;
+
+  --card: 240 10% 4%;
+  --card-foreground: 0 0% 95%;
+
+  --popover: 240 10% 4%;
+  --popover-foreground: 0 0% 95%;
+
+  --primary: 336 81% 36%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 207 54% 50%;
+  --secondary-foreground: 0 0% 100%;
+
+  --muted: 240 10% 10%;
+  --muted-foreground: 240 5% 65%;
+
+  --accent: 336 81% 36%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 240 10% 15%;
+  --input: 240 10% 15%;
+  --ring: 336 81% 36%;
+  
+  --shadow-color: 336 81% 36%;
+  --shadow-sm: 0 2px 8px -2px rgba(var(--shadow-color), 0.2);
+  --shadow-md: 0 4px 12px -2px rgba(var(--shadow-color), 0.25);
+  --shadow-lg: 0 12px 24px -4px rgba(var(--shadow-color), 0.35);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background: radial-gradient(circle at center, #1a1a1a 0%, #09090b 100%);
+    background-attachment: fixed;
+  }
+}
+
+/* Custom BFI Styles */
+.bfi-gradient {
+  background: linear-gradient(90deg, var(--bfi-red) 0%, var(--bfi-red-dark) 100%);
+}
+
+.bfi-gradient-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.bfi-gradient-shine::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: all 0.6s ease;
+}
+
+.bfi-gradient-shine:hover::before {
+  left: 100%;
+}
+
+.bfi-header {
+  background-color: var(--bfi-dark-gray);
+  color: white;
+  border-bottom: 3px solid var(--bfi-red);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.bfi-card {
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  position: relative;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.bfi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #e11d48, #f43f5e);
+  z-index: 1;
+}
+
+.bfi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.bfi-card-red {
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.8) 0%, rgba(190, 18, 60, 0.8) 100%);
+  color: white;
+  border-top: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.bfi-card-blue {
+  background: linear-gradient(135deg, rgba(59, 138, 196, 0.8) 0%, rgba(37, 99, 148, 0.8) 100%);
+  color: white;
+  border-top: 1px solid rgba(96, 165, 250, 0.3);
+}
+
+.bfi-card-gray {
+  background: linear-gradient(135deg, rgba(51, 65, 85, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%);
+  color: white;
+  border-top: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+.bfi-card-glass {
+  background-color: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.bfi-button {
+  background: linear-gradient(90deg, var(--bfi-red) 0%, var(--bfi-red-dark) 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(225, 29, 72, 0.3);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bfi-button:hover {
+  background: linear-gradient(90deg, var(--bfi-red-dark) 0%, var(--bfi-red) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(225, 29, 72, 0.5);
+}
+
+.bfi-button-secondary {
+  background-color: var(--bfi-blue);
+  color: white;
+}
+
+.bfi-button-secondary:hover {
+  background-color: #3278ab;
+}
+
+.bfi-input {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  background-color: rgba(17, 24, 39, 0.6);
+  color: var(--foreground);
+  width: 100%;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.bfi-input:focus {
+  outline: none;
+  border-color: var(--bfi-red);
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.25), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: rgba(17, 24, 39, 0.8);
+}
+
+.bfi-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  background-color: var(--bfi-red);
+  color: white;
+  box-shadow: 0 2px 5px rgba(225, 29, 72, 0.3);
+}
+
+.bfi-text-gradient {
+  background: linear-gradient(90deg, var(--bfi-red), var(--bfi-red-light));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Custom Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(17, 24, 39, 0.6);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--bfi-red) 0%, var(--bfi-red-dark) 100%);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--bfi-red-light) 0%, var(--bfi-red) 100%);
+}
+
+::-webkit-scrollbar-corner {
+  background: rgba(17, 24, 39, 0.6);
+}
+
+/* Firefox scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bfi-red) rgba(17, 24, 39, 0.6);
+}

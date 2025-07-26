@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DB Sync Utility</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #09090b;
+            color: #fafafa;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d3d 100%);
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: #ef4444;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(239, 68, 68, 0.3);
+        }
+        
+        .logo svg {
+            width: 40px;
+            height: 40px;
+            fill: white;
+        }
+        
+        .loading-text {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #fafafa;
+        }
+        
+        .loading-subtitle {
+            font-size: 16px;
+            color: #a1a1aa;
+            margin-bottom: 32px;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #27272a;
+            border-top: 3px solid #ef4444;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-container {
+            display: none;
+            max-width: 600px;
+            padding: 32px;
+            text-align: center;
+        }
+        
+        .error-title {
+            font-size: 20px;
+            color: #ef4444;
+            margin-bottom: 16px;
+        }
+        
+        .error-message {
+            color: #a1a1aa;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+        
+        .retry-button {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .retry-button:hover {
+            background: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-container" id="loadingContainer">
+        <div class="logo">
+            <svg viewBox="0 0 24 24">
+                <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+            </svg>
+        </div>
+        <div class="loading-text">DB Sync Utility</div>
+        <div class="loading-subtitle">Načítání hlavní aplikace...</div>
+        <div class="spinner"></div>
+    </div>
+    
+    <div class="error-container" id="errorContainer">
+        <div class="error-title">Chyba při načítání aplikace</div>
+        <div class="error-message" id="errorMessage">
+            Nepodařilo se načíst hlavní aplikaci. Zkuste to prosím znovu.
+        </div>
+        <button class="retry-button" onclick="retryLoad()">Zkusit znovu</button>
+    </div>
+
+    <script>
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        function showError(message) {
+            document.getElementById('loadingContainer').style.display = 'none';
+            document.getElementById('errorContainer').style.display = 'block';
+            document.getElementById('errorMessage').textContent = message;
+        }
+        
+        function retryLoad() {
+            document.getElementById('errorContainer').style.display = 'none';
+            document.getElementById('loadingContainer').style.display = 'flex';
+            loadMainApp();
+        }
+        
+        function loadMainApp() {
+            console.log('Attempting to load main application...');
+            
+            // Try to load the main Next.js app
+            const iframe = document.createElement('iframe');
+            iframe.style.width = '100%';
+            iframe.style.height = '100vh';
+            iframe.style.border = 'none';
+            iframe.style.display = 'none';
+            
+            // Try to load from the out directory
+            const possiblePaths = [
+                '../out/index.html',
+                '../../out/index.html',
+                './out/index.html'
+            ];
+            
+            let currentPathIndex = 0;
+            
+            function tryNextPath() {
+                if (currentPathIndex >= possiblePaths.length) {
+                    showError('Nepodařilo se najít soubory hlavní aplikace. Prosím přeinstalujte aplikaci.');
+                    return;
+                }
+                
+                const path = possiblePaths[currentPathIndex];
+                console.log('Trying to load from:', path);
+                
+                iframe.onload = function() {
+                    console.log('Successfully loaded main app from:', path);
+                    document.getElementById('loadingContainer').style.display = 'none';
+                    iframe.style.display = 'block';
+                    document.body.appendChild(iframe);
+                };
+                
+                iframe.onerror = function() {
+                    console.log('Failed to load from:', path);
+                    currentPathIndex++;
+                    tryNextPath();
+                };
+                
+                iframe.src = path;
+            }
+            
+            tryNextPath();
+        }
+        
+        // Start loading when the page is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(loadMainApp, 1000);
+        });
+        
+        // Handle Electron-specific events
+        if (window.electron) {
+            console.log('Electron environment detected');
+        }
+    </script>
+</body>
+</html>

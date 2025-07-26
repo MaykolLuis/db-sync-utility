@@ -1,0 +1,28 @@
+{
+  "appId": "com.db-sync-utility.app",
+  "productName": "DB Sync Utility",
+  "directories": {
+    "output": "dist",
+    "buildResources": "assets"
+  },
+  "files": [
+    "electron/**/*",
+    "out/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": {
+      "target": "nsis",
+      "arch": ["x64"]
+    },
+    "icon": "assets/icon.ico",
+    "publisherName": "DB Sync Utility"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true
+  },
+  "publish": null
+}
