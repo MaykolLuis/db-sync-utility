@@ -137,6 +137,9 @@ function createMainWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
       devTools: true,
+      webSecurity: !isDev, // Disable web security in dev, enable in production
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false
     },
     show: false, // Don't show until content is loaded
   });
