@@ -9,12 +9,22 @@
  */
 export function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 B';
+  if (bytes < 0) return `${bytes} B`; // Handle negative values
   
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  
+  // Handle small decimal values
+  if (bytes < 1) {
+    return `${bytes} B`;
+  }
+  
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  // Make sure we don't exceed the array bounds
+  const sizeIndex = Math.min(i, sizes.length - 1);
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[sizeIndex];
 }
 
 /**

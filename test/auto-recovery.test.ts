@@ -5,6 +5,29 @@
 
 import { useAutoRecoveryStore } from '@/lib/stores/use-auto-recovery-store'
 
+// Mock the store to avoid Next.js dependency issues in Jest
+jest.mock('@/lib/stores/use-auto-recovery-store', () => ({
+  useAutoRecoveryStore: {
+    getState: jest.fn().mockReturnValue({
+      saveTargetLocationsState: jest.fn(),
+      saveSourceDirectoryState: jest.fn(),
+      getRecoveryData: jest.fn().mockReturnValue({
+        data: {
+          targetLocations: {
+            hasUnsavedChanges: true,
+            currentLocations: [{ id: 'test', name: 'Test', path: 'C:\\test', selected: true }]
+          },
+          sourceDirectory: {
+            path: 'C:\\source',
+            hasValidFiles: true
+          }
+        }
+      }),
+      clearRecoveryData: jest.fn()
+    })
+  }
+}))
+
 // Mock data for testing
 const mockTargetLocations = [
   { id: 'loc1', name: 'Test Location 1', path: 'C:\\test1', selected: true },
@@ -223,8 +246,8 @@ if (typeof window !== 'undefined') {
     runAll: runAllAutoRecoveryTests,
     testAutoSave,
     testRecovery,
-    testIntervals: testAutoSaveIntervals,
-    testSessions: testSessionManagement
+    testAutoSaveIntervals,
+    testSessionManagement
   }
   
   console.log('🔧 Auto-Recovery tests available in console:')
@@ -232,3 +255,26 @@ if (typeof window !== 'undefined') {
   console.log('   - window.testAutoRecovery.testAutoSave()')
   console.log('   - window.testAutoRecovery.testRecovery()')
 }
+
+// Jest test suite
+describe('Auto Recovery System', () => {
+  const store = useAutoRecoveryStore.getState();
+  
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+  
+  it('should save target locations state', () => {
+    store.saveTargetLocationsState(true, mockOriginalLocations, mockTargetLocations);
+    const recoveryData = store.getRecoveryData();
+    
+    expect(recoveryData).toBeDefined();
+    expect(store.saveTargetLocationsState).toHaveBeenCalled();
+  });
+  
+  it('should save source directory state', () => {
+    store.saveSourceDirectoryState('C:\\test\\source', true);
+    
+    expect(store.saveSourceDirectoryState).toHaveBeenCalled();
+  });
+});

@@ -6,8 +6,14 @@
 // Mock window and electron for testing
 global.window = {
   electron: {
-    copyFiles: jest.fn(),
-    getDirectorySize: jest.fn(),
+    copyFiles: jest.fn().mockResolvedValue({
+      success: true,
+      copiedFiles: ['/test/file.mv.db']
+    }),
+    getDirectorySize: jest.fn().mockResolvedValue({
+      success: true,
+      size: 1048576
+    }),
   }
 };
 
