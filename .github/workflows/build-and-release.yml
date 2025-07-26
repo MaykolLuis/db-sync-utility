@@ -46,6 +46,19 @@ jobs:
         npm ci
         npm ls --depth=0
       
+    - name: Install Linux dependencies
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libnss3-dev libatk-bridge2.0-dev libdrm2 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libxss1 libasound2
+        
+    - name: Setup macOS environment
+      if: matrix.os == 'macos-latest'
+      run: |
+        echo "Setting up macOS build environment"
+        # Disable Gatekeeper for unsigned builds
+        export CSC_IDENTITY_AUTO_DISCOVERY=false
+        
     - name: Create data directory
       run: |
         mkdir -p data
@@ -68,6 +81,8 @@ jobs:
         DEBUG_COLORS: true
         CSC_IDENTITY_AUTO_DISCOVERY: false
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
+        USE_HARD_LINKS: false
         
     - name: List build output
       run: |
