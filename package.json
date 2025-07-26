@@ -30,7 +30,20 @@
       "electron/**/*",
       "out/**/*",
       "package.json",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "!node_modules/**/test/**/*",
+      "!node_modules/**/.bin/**/*",
+      "!node_modules/**/docs/**/*",
+      "!node_modules/**/example/**/*",
+      "!node_modules/**/examples/**/*"
+    ],
+    "asarUnpack": [
+      "electron/splash.html",
+      "electron/login.html",
+      "electron/embedded-app.html",
+      "out/_next/static/css/**/*",
+      "out/_next/static/chunks/**/*",
+      "out/_next/static/media/**/*"
     ],
     "directories": {
       "buildResources": "assets",
@@ -41,6 +54,11 @@
         "from": "data",
         "to": "data",
         "filter": ["**/*"]
+      },
+      {
+        "from": "electron",
+        "to": "electron",
+        "filter": ["*.html"]
       }
     ],
     "win": {

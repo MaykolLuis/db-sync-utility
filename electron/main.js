@@ -62,14 +62,36 @@ function isFileInUse(filePath) {
   }
 }
 
-// For debugging
+// For debugging and preventing early exit
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
+  console.error('Stack trace:', error.stack);
+  // Don't exit on uncaught exceptions during development
+  if (isDev) {
+    console.log('Development mode: Not exiting on uncaught exception');
+  }
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit on unhandled rejections during development
+  if (isDev) {
+    console.log('Development mode: Not exiting on unhandled rejection');
+  }
 });
+
+// Prevent app from quitting unexpectedly
+process.on('SIGINT', () => {
+  console.log('Received SIGINT, gracefully shutting down...');
+  app.quit();
+});
+
+process.on('SIGTERM', () => {
+  console.log('Received SIGTERM, gracefully shutting down...');
+  app.quit();
+});
+
+
 
 let mainWindow;
 let splashWindow;
@@ -88,28 +110,72 @@ function createSplashWindow() {
     backgroundColor: '#000000', // Set window background to black
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      webSecurity: !isDev,
+      enableRemoteModule: false,
+      sandbox: false
     },
     show: false
   });
   
-  // Load splash screen HTML
-  splashWindow.loadFile(path.join(__dirname, 'splash.html'));
+  // Load splash screen HTML - handle both dev and packaged scenarios
+  let splashPath;
+  if (app.isPackaged) {
+    // In packaged app, files are in resources/app.asar.unpacked or extraResources
+    splashPath = path.join(process.resourcesPath, 'electron', 'splash.html');
+    if (!fsSync.existsSync(splashPath)) {
+      // Try alternative path in asar.unpacked
+      splashPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'electron', 'splash.html');
+    }
+  } else {
+    // In development mode
+    splashPath = path.join(__dirname, 'splash.html');
+  }
+  console.log(`Loading splash screen from: ${splashPath}`);
+  console.log(`Splash file exists: ${fsSync.existsSync(splashPath)}`);
+  console.log(`isDev: ${isDev}, isPackaged: ${app.isPackaged}`);
+  console.log(`__dirname: ${__dirname}`);
+  console.log(`process.resourcesPath: ${process.resourcesPath}`);
+  console.log(`app.getAppPath(): ${app.getAppPath()}`);
+  
+  splashWindow.loadFile(splashPath).catch((error) => {
+    console.error('Failed to load splash screen:', error);
+    // If splash fails to load, create main window immediately
+    createMainWindow();
+  });
   
   // Show splash when ready
   splashWindow.once('ready-to-show', () => {
+    console.log('Splash window ready, showing now...');
     splashWindow.show();
-    console.log('Splash screen shown');
+    splashWindow.focus();
+    console.log('Splash screen shown and focused');
     
     // Create main window after splash is shown with a delay
     // This ensures the splash screen is visible for a minimum time
-    setTimeout(() => {
-      createMainWindow();
-    }, 3000); // 3 seconds minimum display time
+    const mainWindowTimeout = setTimeout(() => {
+      console.log('Splash timeout completed, creating main window...');
+      try {
+        createMainWindow();
+      } catch (error) {
+        console.error('Error creating main window:', error);
+        // If main window creation fails, at least keep the app running
+        console.log('Main window creation failed, but keeping app alive');
+      }
+    }, 3200); // 3.2 seconds minimum display time
+    
+    // Store timeout reference for cleanup
+    splashWindow.mainWindowTimeout = mainWindowTimeout;
   });
   
   // Handle splash window closed
   splashWindow.on('closed', () => {
+    console.log('Splash window closed');
+    // Clear the timeout if splash window is closed early
+    if (splashWindow && splashWindow.mainWindowTimeout) {
+      clearTimeout(splashWindow.mainWindowTimeout);
+      console.log('Cleared main window timeout');
+    }
     splashWindow = null;
   });
 }
@@ -137,9 +203,11 @@ function createMainWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
       devTools: true,
-      webSecurity: false, // Disable web security to allow local file loading
+      webSecurity: !isDev, // Enable web security in production, disable in dev
       allowRunningInsecureContent: false,
-      experimentalFeatures: false
+      experimentalFeatures: false,
+      enableRemoteModule: false,
+      sandbox: false
     },
     show: false, // Don't show until content is loaded
   });
@@ -199,7 +267,18 @@ function createMainWindow() {
   let startUrl;
   
   // Load the custom login HTML file - handle both dev and packaged scenarios
-  const loginPath = path.join(__dirname, 'login.html');
+  let loginPath;
+  if (app.isPackaged) {
+    // In packaged app, files are in resources/app.asar.unpacked or extraResources
+    loginPath = path.join(process.resourcesPath, 'electron', 'login.html');
+    if (!fsSync.existsSync(loginPath)) {
+      // Try alternative path in asar.unpacked
+      loginPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'electron', 'login.html');
+    }
+  } else {
+    // In development mode
+    loginPath = path.join(__dirname, 'login.html');
+  }
   console.log(`Loading login page from: ${loginPath}`);
   console.log(`Login file exists: ${fsSync.existsSync(loginPath)}`);
   
@@ -239,6 +318,25 @@ function createMainWindow() {
       </html>
     `;
     mainWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(loginHtml));
+  });
+  
+  // Show main window when ready
+  mainWindow.once('ready-to-show', () => {
+    console.log('Main window ready to show');
+    // Hide splash screen if it exists
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      console.log('Hiding splash screen');
+      splashWindow.hide();
+      setTimeout(() => {
+        if (splashWindow && !splashWindow.isDestroyed()) {
+          splashWindow.close();
+        }
+      }, 500);
+    }
+    // Show main window
+    mainWindow.show();
+    mainWindow.focus();
+    console.log('Main window shown and focused');
   });
   
   // Listen for login success message
@@ -569,8 +667,19 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  console.log('All windows closed event triggered');
+  console.log('Current windows count:', BrowserWindow.getAllWindows().length);
+  console.log('Platform:', process.platform);
+  
+  // Don't quit immediately - give time for splash screen to complete
   if (process.platform !== 'darwin') {
-    app.quit();
+    // Only quit if we're not in the middle of the splash screen process
+    if (!splashWindow || splashWindow.isDestroyed()) {
+      console.log('No splash window, quitting app');
+      app.quit();
+    } else {
+      console.log('Splash window still active, not quitting yet');
+    }
   }
 });
 

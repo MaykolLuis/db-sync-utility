@@ -741,8 +741,8 @@
               
               // Simulate a short delay to show the loading animation
               setTimeout(() => {
-                // Redirect to main app
-                window.electron.send('login-success', { username: 'Technické oddělení' });
+                // Redirect to main app using the correct preload method
+                window.electron.loginSuccess();
               }, 800);
             } else {
               // Invalid password
