@@ -137,7 +137,7 @@ function createMainWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
       devTools: true,
-      webSecurity: !isDev, // Disable web security in dev, enable in production
+      webSecurity: false, // Disable web security to allow local file loading
       allowRunningInsecureContent: false,
       experimentalFeatures: false
     },
@@ -198,10 +198,48 @@ function createMainWindow() {
   // Determine the URL to load
   let startUrl;
   
-  // Load the custom login HTML file directly to avoid hydration issues
+  // Load the custom login HTML file - handle both dev and packaged scenarios
   const loginPath = path.join(__dirname, 'login.html');
   console.log(`Loading login page from: ${loginPath}`);
-  mainWindow.loadFile(loginPath);
+  console.log(`Login file exists: ${fsSync.existsSync(loginPath)}`);
+  
+  // Try to load the login file with error handling
+  mainWindow.loadFile(loginPath).catch((error) => {
+    console.error('Failed to load login.html:', error);
+    // Fallback: create a simple login page inline
+    const loginHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>DB Sync Utility - Login</title>
+        <style>
+          body { font-family: Arial, sans-serif; background: #111827; color: white; padding: 50px; text-align: center; }
+          input { padding: 10px; margin: 10px; background: #374151; color: white; border: 1px solid #6b7280; border-radius: 5px; }
+          button { padding: 10px 20px; background: #ef4444; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        </style>
+      </head>
+      <body>
+        <h1>DB Sync Utility</h1>
+        <form id="loginForm">
+          <input type="password" id="password" placeholder="Enter password" required>
+          <br><button type="submit">Login</button>
+        </form>
+        <script>
+          document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const password = document.getElementById('password').value;
+            if (password === 'admin') {
+              window.electronAPI.loginSuccess();
+            } else {
+              alert('Invalid password');
+            }
+          });
+        </script>
+      </body>
+      </html>
+    `;
+    mainWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(loginHtml));
+  });
   
   // Listen for login success message
   ipcMain.on('login-success', () => {

@@ -110,6 +110,11 @@ contextBridge.exposeInMainWorld('electron', {
       ipcRenderer.send(channel, data);
     }
   },
+  
+  loginSuccess: () => {
+    log.info('Login success triggered');
+    ipcRenderer.send('login-success');
+  },
   // Backup creation
   createBackup: async (sourcePath, targetPaths) => {
     log.info(`Creating backups before copying from ${sourcePath} to targets`);
@@ -350,6 +355,25 @@ contextBridge.exposeInMainWorld('electron', {
     } catch (error) {
       log.error('Error opening file:', error);
       return Promise.resolve({ success: false, error: error.message });
+    }
+  },
+
+  // Login handling
+  send(channel, data) {
+    log.info(`Sending IPC message: ${channel}`, data);
+    try {
+      ipcRenderer.send(channel, data);
+    } catch (error) {
+      log.error(`Error sending IPC message ${channel}:`, error);
+    }
+  },
+  
+  loginSuccess() {
+    log.info('Login success triggered');
+    try {
+      ipcRenderer.send('login-success');
+    } catch (error) {
+      log.error('Error sending login-success:', error);
     }
   },
 
