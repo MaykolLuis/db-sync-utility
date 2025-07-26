@@ -26,6 +26,14 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
+        registry-url: 'https://registry.npmjs.org/'
+        
+    - name: Clean package manager files
+      run: |
+        rm -f pnpm-lock.yaml
+        rm -f yarn.lock
+        echo "Using npm as package manager"
+      shell: bash
         
     - name: Install dependencies
       run: npm ci
