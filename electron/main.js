@@ -121,18 +121,32 @@ function createSplashWindow() {
   // Load splash screen HTML - handle both dev and packaged scenarios
   let splashPath;
   if (app.isPackaged) {
-    // In packaged app, files are in resources/app.asar.unpacked or extraResources
-    splashPath = path.join(process.resourcesPath, 'electron', 'splash.html');
-    if (!fsSync.existsSync(splashPath)) {
-      // Try alternative path in asar.unpacked
-      splashPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'electron', 'splash.html');
+    // In packaged app, try multiple possible paths
+    const possiblePaths = [
+      path.join(process.resourcesPath, 'app.asar.unpacked', 'electron', 'splash.html'),
+      path.join(app.getAppPath(), 'electron', 'splash.html'),
+      path.join(__dirname, 'splash.html'),
+      path.join(process.resourcesPath, 'electron', 'splash.html')
+    ];
+    
+    console.log('Searching for splash.html in packaged app:');
+    for (const testPath of possiblePaths) {
+      console.log(`  Trying: ${testPath} - exists: ${fsSync.existsSync(testPath)}`);
+      if (fsSync.existsSync(testPath)) {
+        splashPath = testPath;
+        break;
+      }
+    }
+    
+    if (!splashPath) {
+      console.error('Could not find splash.html in any expected location!');
+      splashPath = possiblePaths[0]; // Use first path as fallback
     }
   } else {
     // In development mode
     splashPath = path.join(__dirname, 'splash.html');
   }
-  console.log(`Loading splash screen from: ${splashPath}`);
-  console.log(`Splash file exists: ${fsSync.existsSync(splashPath)}`);
+  console.log(`Final splash path: ${splashPath}`);
   console.log(`isDev: ${isDev}, isPackaged: ${app.isPackaged}`);
   console.log(`__dirname: ${__dirname}`);
   console.log(`process.resourcesPath: ${process.resourcesPath}`);
@@ -140,8 +154,80 @@ function createSplashWindow() {
   
   splashWindow.loadFile(splashPath).catch((error) => {
     console.error('Failed to load splash screen:', error);
-    // If splash fails to load, create main window immediately
-    createMainWindow();
+    console.log('Attempting to load embedded splash screen...');
+    
+    // Create embedded splash screen as fallback
+    const splashHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>DB Sync Utility</title>
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+          }
+          .splash-container {
+            text-align: center;
+            animation: fadeIn 1s ease-in;
+          }
+          .logo {
+            width: 80px;
+            height: 80px;
+            background: #ef4444;
+            border-radius: 20px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            animation: pulse 2s infinite;
+          }
+          h1 {
+            font-size: 32px;
+            margin: 20px 0 10px;
+            font-weight: 600;
+          }
+          p {
+            font-size: 16px;
+            opacity: 0.8;
+            margin: 0;
+          }
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="splash-container">
+          <div class="logo">🗄️</div>
+          <h1>DB Sync Utility</h1>
+          <p>Přihlašte se pro přístup k aplikaci</p>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    splashWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(splashHtml)).then(() => {
+      console.log('Embedded splash screen loaded successfully');
+    }).catch((fallbackError) => {
+      console.error('Failed to load embedded splash screen:', fallbackError);
+      // If even the embedded splash fails, create main window immediately
+      createMainWindow();
+    });
   });
   
   // Show splash when ready
@@ -269,17 +355,32 @@ function createMainWindow() {
   // Load the custom login HTML file - handle both dev and packaged scenarios
   let loginPath;
   if (app.isPackaged) {
-    // In packaged app, files are in resources/app.asar.unpacked or extraResources
-    loginPath = path.join(process.resourcesPath, 'electron', 'login.html');
-    if (!fsSync.existsSync(loginPath)) {
-      // Try alternative path in asar.unpacked
-      loginPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'electron', 'login.html');
+    // In packaged app, try multiple possible paths
+    const possiblePaths = [
+      path.join(process.resourcesPath, 'app.asar.unpacked', 'electron', 'login.html'),
+      path.join(app.getAppPath(), 'electron', 'login.html'),
+      path.join(__dirname, 'login.html'),
+      path.join(process.resourcesPath, 'electron', 'login.html')
+    ];
+    
+    console.log('Searching for login.html in packaged app:');
+    for (const testPath of possiblePaths) {
+      console.log(`  Trying: ${testPath} - exists: ${fsSync.existsSync(testPath)}`);
+      if (fsSync.existsSync(testPath)) {
+        loginPath = testPath;
+        break;
+      }
+    }
+    
+    if (!loginPath) {
+      console.error('Could not find login.html in any expected location!');
+      loginPath = possiblePaths[0]; // Use first path as fallback
     }
   } else {
     // In development mode
     loginPath = path.join(__dirname, 'login.html');
   }
-  console.log(`Loading login page from: ${loginPath}`);
+  console.log(`Final login path: ${loginPath}`);
   console.log(`Login file exists: ${fsSync.existsSync(loginPath)}`);
   
   // Try to load the login file with error handling
