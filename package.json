@@ -28,9 +28,9 @@
     "files": [
       "electron/**/*",
       "out/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/**/*"
     ],
-    "includeSubNodeModules": true,
     "directories": {
       "buildResources": "assets",
       "output": "dist"
