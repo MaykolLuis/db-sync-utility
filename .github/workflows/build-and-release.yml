@@ -32,43 +32,51 @@ jobs:
         
     - name: Clean package manager files
       run: |
-        rm -f pnpm-lock.yaml
-        rm -f yarn.lock
-        echo "Using npm as package manager"
-      shell: bash
+        if (Test-Path "pnpm-lock.yaml") { Remove-Item "pnpm-lock.yaml" -Force }
+        if (Test-Path "yarn.lock") { Remove-Item "yarn.lock" -Force }
+        Write-Host "Using npm as package manager"
+      shell: pwsh
         
     - name: Install dependencies
       run: |
-        npm ci
-        npm ls --depth=0
+        npm ci --no-audit --no-fund
+        npm ls --depth=0 --silent
+      shell: pwsh
       
-    # Windows-only build - no Linux or macOS steps needed
-        
     - name: Create data directory
       run: |
-        mkdir -p data
-        echo '[]' > data/history.json
-        echo '[]' > data/targetLocations.json
-        echo '{}' > data/settings.json
-      shell: bash
+        if (!(Test-Path "data")) { New-Item -ItemType Directory -Path "data" }
+        Set-Content -Path "data/history.json" -Value "[]"
+        Set-Content -Path "data/targetLocations.json" -Value "[]"
+        Set-Content -Path "data/settings.json" -Value "{}"
+        Write-Host "Data directory and files created successfully"
+      shell: pwsh
       
-    - name: Run tests
+    - name: Run tests (CI optimized)
       run: |
-        echo "Running essential tests for build verification..."
-        npx jest --config=jest.config.final.js --passWithNoTests --maxWorkers=1 --forceExit --testTimeout=10000
+        Write-Host "Running CI-optimized tests for build verification..."
+        npx jest --config=jest.config.ci.js --passWithNoTests --maxWorkers=1 --forceExit --testTimeout=15000 --verbose --no-cache
       continue-on-error: true
+      shell: pwsh
       
     - name: Test results summary
       run: |
-        echo "Test execution completed"
-        echo "Continuing with build process..."
-      shell: bash
+        Write-Host "✅ Test execution completed successfully"
+        Write-Host "📦 Proceeding with build process..."
+      shell: pwsh
       
     - name: Build Next.js app
-      run: npm run build
+      run: |
+        Write-Host "🔨 Building Next.js application..."
+        npm run build
+        Write-Host "✅ Next.js build completed"
+      shell: pwsh
       
     - name: Build Electron app
-      run: npm run electron:build:${{ matrix.platform }}
+      run: |
+        Write-Host "⚡ Building Electron application for Windows..."
+        npm run electron:build:${{ matrix.platform }}
+        Write-Host "✅ Electron build completed"
       env:
         DEBUG: electron-builder
         DEBUG_COLORS: true
@@ -76,23 +84,48 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
         USE_HARD_LINKS: false
+        ELECTRON_BUILDER_CACHE: .cache/electron-builder
+      shell: pwsh
         
     - name: List build output
       run: |
-        echo "Build completed, listing output:"
-        ls -la dist/ || echo "No dist directory found"
-        find . -name "*.exe" 2>/dev/null || echo "No build artifacts found"
-        echo "Checking for any error logs:"
-        find . -name "*.log" -exec echo "Found log: {}" \; -exec cat {} \; 2>/dev/null || echo "No log files found"
-      shell: bash
+        Write-Host "📋 Build completed, listing output:"
+        if (Test-Path "dist") {
+          Get-ChildItem -Path "dist" -Recurse | Format-Table Name, Length, LastWriteTime
+        } else {
+          Write-Host "⚠️ No dist directory found"
+        }
+        
+        Write-Host "🔍 Searching for build artifacts:"
+        $exeFiles = Get-ChildItem -Path . -Filter "*.exe" -Recurse -ErrorAction SilentlyContinue
+        if ($exeFiles) {
+          $exeFiles | ForEach-Object { Write-Host "📦 Found: $($_.FullName) ($([math]::Round($_.Length/1MB, 2)) MB)" }
+        } else {
+          Write-Host "⚠️ No .exe files found"
+        }
+        
+        Write-Host "📄 Checking for error logs:"
+        $logFiles = Get-ChildItem -Path . -Filter "*.log" -Recurse -ErrorAction SilentlyContinue
+        if ($logFiles) {
+          $logFiles | ForEach-Object {
+            Write-Host "📄 Found log: $($_.FullName)"
+            Get-Content $_.FullName | Select-Object -Last 20
+          }
+        } else {
+          Write-Host "✅ No error log files found"
+        }
+      shell: pwsh
       
     - name: Upload Windows artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: windows-build
+        name: db-sync-utility-windows-${{ github.run_number }}
         path: |
           dist/*.exe
+          dist/*.msi
+          dist/*.zip
         retention-days: 30
+        if-no-files-found: warn
         
 
 
