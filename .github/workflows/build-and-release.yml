@@ -14,14 +14,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        os: [windows-latest]
         include:
           - os: windows-latest
             platform: win
-          - os: macos-latest
-            platform: mac
-          - os: ubuntu-latest
-            platform: linux
     
     steps:
     - name: Checkout code
@@ -46,18 +42,7 @@ jobs:
         npm ci
         npm ls --depth=0
       
-    - name: Install Linux dependencies
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libnss3-dev libatk-bridge2.0-dev libdrm2 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libxss1 libasound2t64
-        
-    - name: Setup macOS environment
-      if: matrix.os == 'macos-latest'
-      run: |
-        echo "Setting up macOS build environment"
-        # Disable Gatekeeper for unsigned builds
-        export CSC_IDENTITY_AUTO_DISCOVERY=false
+    # Windows-only build - no Linux or macOS steps needed
         
     - name: Create data directory
       run: |
@@ -88,35 +73,20 @@ jobs:
       run: |
         echo "Build completed, listing output:"
         ls -la dist/ || echo "No dist directory found"
-        find . -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" 2>/dev/null || echo "No build artifacts found"
+        find . -name "*.exe" 2>/dev/null || echo "No build artifacts found"
         echo "Checking for any error logs:"
         find . -name "*.log" -exec echo "Found log: {}" \; -exec cat {} \; 2>/dev/null || echo "No log files found"
       shell: bash
       
-    - name: Upload artifacts
+    - name: Upload Windows artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: electron-app-${{ matrix.platform }}
+        name: windows-build
         path: |
           dist/*.exe
-          dist/*.dmg
-          dist/*.AppImage
-          dist/*.deb
-          dist/*.rpm
-          dist/*.tar.gz
         retention-days: 30
         
-    - name: Upload Linux artifacts
-      if: matrix.os == 'ubuntu-latest'
-      uses: actions/upload-artifact@v4
-      with:
-        name: linux-build
-        path: |
-          dist/*.AppImage
-          dist/*.deb
-          dist/*.rpm
-          dist/*.tar.gz
-        retention-days: 30
+
 
   release:
     needs: build
@@ -135,8 +105,6 @@ jobs:
       with:
         files: |
           windows-build/*
-          macos-build/*
-          linux-build/*
         draft: false
         prerelease: false
         generate_release_notes: true
