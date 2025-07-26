@@ -2,11 +2,179 @@ const { app, BrowserWindow, ipcMain, dialog, Notification, shell, protocol } = r
 const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
-// Replace electron-is-dev with custom implementation
-const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-const url = require('url');
-const autoUpdateManager = require('./auto-updater');
-const crashHandler = require('./crash-handler');
+const http = require('http');
+const AutoUpdateManager = require('./auto-updater');
+const isDev = process.env.NODE_ENV === 'development';
+const isPackaged = app.isPackaged;
+
+// Create a local HTTP server to serve Next.js assets
+let assetServer = null;
+const ASSET_SERVER_PORT = 3001;
+
+function createAssetServer() {
+  if (assetServer) {
+    console.log('⚠️ Asset server already running, skipping duplicate startup');
+    return;
+  }
+  
+  console.log('🚀 Creating local asset server on port', ASSET_SERVER_PORT);
+  
+  assetServer = http.createServer((req, res) => {
+    console.log('📡 Asset server request:', req.url);
+    
+    // Handle CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    if (req.method === 'OPTIONS') {
+      res.writeHead(200);
+      res.end();
+      return;
+    }
+    
+    // Handle root request and index.html specially
+    let requestPath = req.url;
+    if (requestPath === '/' || requestPath === '/index.html') {
+      requestPath = '/index.html';
+      
+      // Try to find index.html in possible locations
+      const possibleIndexPaths = [
+        path.join(__dirname, '../out/index.html'),
+        path.join(app.getAppPath(), 'out/index.html'),
+        path.join(process.resourcesPath, 'app/out/index.html'),
+        path.join(process.resourcesPath, 'app.asar.unpacked/out/index.html')
+      ];
+      
+      for (const indexPath of possibleIndexPaths) {
+        if (fsSync.existsSync(indexPath)) {
+          console.log('✅ Serving index.html from:', indexPath);
+          
+          try {
+            let htmlContent = fsSync.readFileSync(indexPath, 'utf8');
+            
+            // Rewrite asset paths to use the asset server
+            htmlContent = htmlContent
+              .replace(/href="\.\/([^"]+)"/g, 'href="http://localhost:3001/$1"')
+              .replace(/src="\.\/([^"]+)"/g, 'src="http://localhost:3001/$1"')
+              .replace(/href="\/([^"]+)"/g, 'href="http://localhost:3001/$1"')
+              .replace(/src="\/([^"]+)"/g, 'src="http://localhost:3001/$1"')
+              .replace(/"\/\_next\/([^"]+)"/g, '"http://localhost:3001/_next/$1"')
+              .replace(/"\/\_next\/static\/chunks\/([^\"]+)"/g, '"http://localhost:3001/_next/static/chunks/$1"')
+              .replace(/<link[^>]+rel=["']preload["'][^>]*href=["']\/\_next\/([^"']+)["'][^>]*>/g, 
+                function(match, assetPath) { return match.replace('"/_next/' + assetPath + '"', '"http://localhost:3001/_next/' + assetPath + '"'); })
+              .replace(/<script[^>]+src=["']\/\_next\/([^"']+)["'][^>]*>/g, 
+                function(match, assetPath) { return match.replace('"/_next/' + assetPath + '"', '"http://localhost:3001/_next/' + assetPath + '"'); })
+              .replace(/"\/\_next\/static\/([^"]+)"/g, '"http://localhost:3001/_next/static/$1"')
+              .replace(/'\/\_next\/static\/([^']+)'/g, "'http://localhost:3001/_next/static/$1'");
+            
+            // Add minimal webpack public path script
+            const webpackScript = '<script>' +
+              'console.log("Setting webpack public path from asset server...");' +
+              'if (typeof window !== "undefined") {' +
+                'window.__webpack_public_path__ = "http://localhost:3001/_next/";' +
+                'if (typeof __webpack_require__ !== "undefined") {' +
+                  '__webpack_require__.p = "http://localhost:3001/_next/";' +
+                  'console.log("Webpack public path set:", __webpack_require__.p);' +
+                '}' +
+              '}' +
+            '</script>';
+            
+            // Insert the script before closing head tag
+            htmlContent = htmlContent.replace('</head>', webpackScript + '</head>');
+            
+            res.setHeader('Content-Type', 'text/html');
+            res.writeHead(200);
+            res.end(htmlContent);
+            return;
+          } catch (error) {
+            console.error('❌ Error processing index.html:', error);
+          }
+        }
+      }
+      
+      console.error('❌ index.html not found in any location');
+      res.writeHead(404);
+      res.end('index.html not found');
+      return;
+    }
+    
+    // Handle other asset requests
+    const possibleAssetPaths = [
+      path.join(__dirname, '../out', requestPath),
+      path.join(app.getAppPath(), 'out', requestPath),
+      path.join(process.resourcesPath, 'app/out', requestPath),
+      path.join(process.resourcesPath, 'app.asar.unpacked/out', requestPath)
+    ];
+    
+    for (const assetPath of possibleAssetPaths) {
+      if (fsSync.existsSync(assetPath)) {
+        console.log('✅ Serving asset from:', assetPath);
+        
+        // Set appropriate content type
+        let contentType = 'text/plain';
+        if (requestPath.endsWith('.js')) contentType = 'application/javascript';
+        else if (requestPath.endsWith('.css')) contentType = 'text/css';
+        else if (requestPath.endsWith('.html')) contentType = 'text/html';
+        else if (requestPath.endsWith('.json')) contentType = 'application/json';
+        
+        res.setHeader('Content-Type', contentType);
+        res.writeHead(200);
+        
+        const fileContent = fsSync.readFileSync(assetPath);
+        res.end(fileContent);
+        return;
+      }
+    }
+    
+    console.error('❌ Asset not found:', requestPath);
+    res.writeHead(404);
+    res.end('Asset not found');
+  });
+  
+  assetServer.listen(ASSET_SERVER_PORT, 'localhost', () => {
+    console.log(`✅ Asset server running on http://localhost:${ASSET_SERVER_PORT}`);
+  });
+  
+  assetServer.on('error', (err) => {
+    console.error('❌ Asset server error:', err);
+  });
+}
+
+// Setup custom protocol for serving static assets
+app.whenReady().then(() => {
+  // Start the local asset server
+  createAssetServer();
+  
+  // Keep the custom protocol as fallback
+  protocol.registerFileProtocol('app-assets', (request, callback) => {
+    const url = request.url.substr(12); // Remove 'app-assets://' prefix
+    console.log('🔵 app-assets protocol request:', url);
+    
+    const possibleAssetPaths = [
+      path.join(__dirname, '../out', url),
+      path.join(app.getAppPath(), 'out', url),
+      path.join(process.resourcesPath, 'app/out', url),
+      path.join(process.resourcesPath, 'app.asar.unpacked/out', url)
+    ];
+    
+    for (const assetPath of possibleAssetPaths) {
+      if (fsSync.existsSync(assetPath)) {
+        console.log('✅ Serving from app-assets:', assetPath);
+        callback({ path: assetPath });
+        return;
+      }
+    }
+    
+    console.error('❌ app-assets not found:', url);
+    callback({ error: -6 });
+  });
+});
+
+// Start the local asset server
+app.whenReady().then(() => {
+  createAssetServer();
+});
 
 // Function to read JSON files
 async function readJsonFile(filePath) {
@@ -152,8 +320,26 @@ function createSplashWindow() {
   console.log(`process.resourcesPath: ${process.resourcesPath}`);
   console.log(`app.getAppPath(): ${app.getAppPath()}`);
   
-  splashWindow.loadFile(splashPath).catch((error) => {
-    console.error('Failed to load splash screen:', error);
+  // Use custom protocol to serve the splash screen to avoid file path issues
+  console.log(`Splash path: ${splashPath}`);
+  
+  // Register a custom protocol to serve local files
+  const { protocol } = require('electron');
+  
+  // Try to read and serve the splash file directly
+  try {
+    const splashContent = fsSync.readFileSync(splashPath, 'utf8');
+    const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(splashContent)}`;
+    console.log('Loading splash screen via data URL');
+    
+    splashWindow.loadURL(dataUrl).then(() => {
+      console.log('Splash screen loaded successfully via data URL');
+    }).catch((error) => {
+      console.error('Failed to load splash screen via data URL:', error);
+      throw error; // Re-throw to trigger the catch block below
+    });
+  } catch (error) {
+    console.error('Failed to read splash file:', error);
     console.log('Attempting to load embedded splash screen...');
     
     // Create embedded splash screen as fallback
@@ -228,7 +414,7 @@ function createSplashWindow() {
       // If even the embedded splash fails, create main window immediately
       createMainWindow();
     });
-  });
+  }
   
   // Show splash when ready
   splashWindow.once('ready-to-show', () => {
@@ -383,8 +569,21 @@ function createMainWindow() {
   console.log(`Final login path: ${loginPath}`);
   console.log(`Login file exists: ${fsSync.existsSync(loginPath)}`);
   
-  // Try to load the login file with error handling
-  mainWindow.loadFile(loginPath).catch((error) => {
+  // Use data URL approach to serve the login screen to avoid file path issues
+  console.log('Attempting to load login screen via data URL');
+  
+  try {
+    const loginContent = fsSync.readFileSync(loginPath, 'utf8');
+    const loginDataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(loginContent)}`;
+    
+    mainWindow.loadURL(loginDataUrl).then(() => {
+      console.log('Login screen loaded successfully via data URL');
+    }).catch((error) => {
+      console.error('Failed to load login screen via data URL:', error);
+      throw error; // Re-throw to trigger the catch block below
+    });
+  } catch (error) {
+    console.error('Failed to read login file:', error);
     console.error('Failed to load login.html:', error);
     // Fallback: create a simple login page inline
     const loginHtml = `
@@ -419,7 +618,7 @@ function createMainWindow() {
       </html>
     `;
     mainWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(loginHtml));
-  });
+  }
   
   // Show main window when ready
   mainWindow.once('ready-to-show', () => {
@@ -443,120 +642,27 @@ function createMainWindow() {
   // Listen for login success message
   ipcMain.on('login-success', () => {
     console.log('Login successful, loading main app');
-    console.log('isDev:', isDev);
-    console.log('__dirname:', __dirname);
-    console.log('process.resourcesPath:', process.resourcesPath);
-    console.log('app.getAppPath():', app.getAppPath());
     
-    // Preload the main app page to make transition faster
     if (isDev) {
       // Development mode - load from Next.js dev server
       const appUrl = `http://localhost:${nextAppPort}`;
       console.log(`Development mode: Loading main app from ${appUrl}`);
       
-      // Use loadURL with no-cache option for faster loading
       mainWindow.loadURL(appUrl, {
         extraHeaders: 'pragma: no-cache\n'
       });
     } else {
-      // Production mode - load from built files
-      console.log('Production mode: Attempting to load main app');
-      console.log('Current working directory:', process.cwd());
-      console.log('App path:', app.getAppPath());
-      console.log('__dirname:', __dirname);
+      // Production mode - use HTTP asset server (simple and reliable)
+      console.log('Production mode: Loading main app from HTTP asset server...');
       
-      // Production mode - fix path resolution for packaged app
-      console.log('Attempting to load main app from static files...');
+      const mainAppUrl = 'http://localhost:3001/index.html';
+      console.log('Loading main React app from HTTP server:', mainAppUrl);
       
-      // In packaged app, files are in resources/app/out/
-      // Try multiple possible paths based on the actual packaged structure
-      const possiblePaths = [
-        path.join(__dirname, '../out/index.html'),           // Development structure
-        path.join(app.getAppPath(), 'out/index.html'),       // Packaged app structure
-        path.join(process.resourcesPath, 'app/out/index.html') // Alternative packaged structure
-      ];
-      
-      console.log('Trying paths in order:');
-      possiblePaths.forEach((p, i) => {
-        console.log(`${i + 1}. ${p} - exists: ${fsSync.existsSync(p)}`);
+      mainWindow.loadURL(mainAppUrl).then(() => {
+        console.log('Main React app loaded successfully from HTTP server after login');
+      }).catch(error => {
+        console.error('Failed to load main React app from HTTP server:', error);
       });
-      
-      let foundPath = null;
-      for (const testPath of possiblePaths) {
-        if (fsSync.existsSync(testPath)) {
-          foundPath = testPath;
-          break;
-        }
-      }
-      
-      if (foundPath) {
-        console.log(`Loading from found path: ${foundPath}`);
-        mainWindow.loadFile(foundPath).then(() => {
-          console.log('Static app loaded successfully');
-        }).catch(error => {
-          console.error('Failed to load static app:', error);
-          console.log('Falling back to embedded app...');
-          loadEmbeddedApp();
-        });
-      } else {
-        console.log('No static files found, loading embedded app...');
-        loadEmbeddedApp();
-      }
-    }
-    
-    function loadFallbackApp() {
-      console.log('Loading fallback app...');
-      // Create a simple fallback HTML that shows the app is working
-      const fallbackHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>DB Sync Utility</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: white; }
-            .container { max-width: 600px; margin: 0 auto; text-align: center; }
-            .error { color: #ff6b6b; }
-            .info { color: #51cf66; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <h1>DB Sync Utility</h1>
-            <p class="error">Main application files could not be loaded.</p>
-            <p class="info">This appears to be a packaging issue. Please try:</p>
-            <ul style="text-align: left;">
-              <li>Reinstalling the application</li>
-              <li>Running as administrator</li>
-              <li>Checking antivirus software</li>
-            </ul>
-            <p><strong>Debug Info:</strong></p>
-            <p>__dirname: ${__dirname}</p>
-            <p>App Path: ${app.getAppPath()}</p>
-            <p>Process CWD: ${process.cwd()}</p>
-          </div>
-        </body>
-        </html>
-      `;
-      mainWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(fallbackHtml));
-    }
-    
-    function loadEmbeddedApp() {
-      console.log('Loading embedded app as fallback...');
-      const embeddedAppPath = path.join(__dirname, 'embedded-app.html');
-      console.log('Embedded app path:', embeddedAppPath);
-      
-      if (fsSync.existsSync(embeddedAppPath)) {
-        console.log('Embedded app exists, loading...');
-        mainWindow.loadFile(embeddedAppPath).then(() => {
-          console.log('Embedded app loaded successfully');
-        }).catch(error => {
-          console.error('Error loading embedded app:', error);
-          loadFallbackApp();
-        });
-      } else {
-        console.error('Embedded app not found, loading fallback');
-        loadFallbackApp();
-      }
     }
   });
   
@@ -576,11 +682,7 @@ function createMainWindow() {
     });
   }
   
-  
-  // Open DevTools in development mode
-  if (isDev) {
-    mainWindow.webContents.openDevTools();
-  }
+  // DevTools disabled for production builds
 
   // Show window when ready to prevent blank screen flash
   mainWindow.once('ready-to-show', () => {
@@ -608,14 +710,7 @@ function createMainWindow() {
     console.log('Main window shown, splash screen closed');
   });
 
-  // Open DevTools for debugging (both dev and production)
-  // Remove this line after debugging is complete
-  mainWindow.webContents.openDevTools();
-  
-  // Also open DevTools automatically in development mode
-  if (isDev) {
-    console.log('Development mode: DevTools enabled');
-  }
+  // DevTools completely disabled for production builds
 
   // Handle window close with unsaved changes check
   mainWindow.on('close', async (event) => {
@@ -2487,6 +2582,9 @@ ipcMain.handle('write-json-file', async (event, { filePath, data }) => {
 // Settings are now handled by the IPC handler defined earlier in the file
 // The duplicate handler has been removed to prevent the 'Attempted to register a second handler for save-settings-to-file' error
 
+// Note: login-success handler is already defined earlier in the file (around line 643)
+// This duplicate handler has been removed to prevent conflicts
+
 // Password management handlers
 ipcMain.handle('get-password', async () => {
   try {
@@ -2547,6 +2645,60 @@ ipcMain.handle('verify-password', async (event, password) => {
   } catch (error) {
     console.error('Error verifying password:', error);
     return false;
+  }
+});
+
+// Authentication state management handlers (to replace localStorage in data URL context)
+ipcMain.handle('set-authentication-state', async (event, { isAuthenticated, username }) => {
+  try {
+    console.log('Setting authentication state:', { isAuthenticated, username });
+    const dataDir = await ensureDataDirectory();
+    const authFile = path.join(dataDir, 'auth-state.json');
+    
+    const authData = {
+      isAuthenticated,
+      username,
+      timestamp: Date.now()
+    };
+    
+    await fs.writeFile(authFile, JSON.stringify(authData, null, 2), 'utf8');
+    console.log('Authentication state saved successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('Error setting authentication state:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-authentication-state', async (event) => {
+  try {
+    console.log('Getting authentication state');
+    const dataDir = await ensureDataDirectory();
+    const authFile = path.join(dataDir, 'auth-state.json');
+    
+    // Check if auth file exists
+    try {
+      await fs.access(authFile);
+    } catch (err) {
+      // If file doesn't exist, return default state
+      console.log('No authentication state file found, returning default state');
+      return { success: true, isAuthenticated: false, username: null };
+    }
+    
+    // Read authentication state from file
+    const data = await fs.readFile(authFile, 'utf8');
+    const authData = JSON.parse(data);
+    
+    console.log('Authentication state loaded:', { isAuthenticated: authData.isAuthenticated, username: authData.username });
+    return {
+      success: true,
+      isAuthenticated: authData.isAuthenticated || false,
+      username: authData.username || null,
+      timestamp: authData.timestamp
+    };
+  } catch (error) {
+    console.error('Error getting authentication state:', error);
+    return { success: false, isAuthenticated: false, username: null, error: error.message };
   }
 });
 
@@ -2866,9 +3018,4 @@ ipcMain.handle('get-breadcrumbs', () => {
   }
 });
 
-// Initialize crash handler
-crashHandler.initialize().then(() => {
-  console.log('Crash handler initialized successfully');
-}).catch(error => {
-  console.error('Failed to initialize crash handler:', error);
-});
+// Crash handler initialization removed - was causing undefined reference error

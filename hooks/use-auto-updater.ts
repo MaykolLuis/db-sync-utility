@@ -1,6 +1,6 @@
+import { UpdateStatusData } from '@/app/types/electron';
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import type { UpdateStatusData } from '@/app/types/electron';
 
 interface UpdateInfo {
   version: string;
@@ -33,90 +33,18 @@ export function useAutoUpdater() {
 
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
 
-  // Handle update status events from main process
-  const handleUpdateStatus = useCallback((statusData: UpdateStatusData) => {
-    console.log('Update status received:', statusData);
-
-    switch (statusData.event) {
-      case 'checking-for-update':
-        setUpdateStatus(prev => ({
-          ...prev,
-          checking: true,
-          error: null
-        }));
-        break;
-
-      case 'update-available':
-        if (statusData.data) {
-          setUpdateStatus(prev => ({
-            ...prev,
-            checking: false,
-            available: true,
-            availableVersion: statusData.data?.version || null
-          }));
-          setUpdateInfo({
-            version: statusData.data.version || '',
-            releaseDate: statusData.data.releaseDate,
-            releaseNotes: statusData.data.releaseNotes
-          });
-          toast.success('Aktualizace k dispozici', {
-            description: `Nová verze ${statusData.data.version} je k dispozici!`,
-            duration: 8000
-          });
-        }
-        break;
-
-      case 'update-not-available':
-        setUpdateStatus(prev => ({
-          ...prev,
-          checking: false,
-          available: false,
-          error: null
-        }));
-        break;
-
-      case 'update-error':
-        setUpdateStatus(prev => ({
-          ...prev,
-          checking: false,
-          downloading: false,
-          error: statusData.data?.error || 'Neznámá chyba při aktualizaci'
-        }));
-        toast.error('Chyba při aktualizaci', {
-          description: statusData.data?.error || 'Neznámá chyba při aktualizaci',
-          duration: 8000
-        });
-        break;
-
-      case 'download-progress':
-        if (statusData.data) {
-          setUpdateStatus(prev => ({
-            ...prev,
-            downloading: true,
-            downloadProgress: statusData.data?.percent || 0
-          }));
-        }
-        break;
-
-      case 'update-downloaded':
-        if (statusData.data) {
-          setUpdateStatus(prev => ({
-            ...prev,
-            downloading: false,
-            downloaded: true,
-            downloadProgress: 100
-          }));
-          toast.success('Aktualizace stažena', {
-            description: `Verze ${statusData.data.version} je připravena k instalaci`,
-            duration: 10000,
-            action: {
-              label: 'Restartovat nyní',
-              onClick: () => installUpdate()
-            }
-          });
-        }
-        break;
-    }
+  // Handle update status from main process
+  const handleUpdateStatus = useCallback((status: { checking: boolean; downloaded: boolean; currentVersion: string; downloading?: boolean; downloadProgress?: number }) => {
+    console.log('Update status received:', status);
+    
+    setUpdateStatus(prev => ({
+      ...prev,
+      checking: status.checking,
+      downloaded: status.downloaded,
+      currentVersion: status.currentVersion,
+      downloading: status.downloading || false,
+      downloadProgress: status.downloadProgress || 0
+    }));
   }, []);
 
   // Initialize update status listener
@@ -126,7 +54,7 @@ export function useAutoUpdater() {
       window.electron.updater.onUpdateStatus(handleUpdateStatus);
 
       // Get initial status
-      window.electron.updater.getStatus().then(result => {
+      window.electron.updater.getStatus().then((result: { success: boolean; status?: { checking: boolean; downloaded: boolean; currentVersion: string }; error?: string }) => {
         if (result.success && result.status) {
           setUpdateStatus(prev => ({
             ...prev,
@@ -135,7 +63,7 @@ export function useAutoUpdater() {
             currentVersion: result.status!.currentVersion
           }));
         }
-      }).catch(error => {
+      }).catch((error: any) => {
         console.error('Error getting initial update status:', error);
       });
 

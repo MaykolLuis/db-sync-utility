@@ -6,15 +6,7 @@ const nextConfig = {
   // Enable trailing slash for better static file serving
   trailingSlash: true,
   
-  // Custom webpack configuration for Electron
-  webpack: (config, { isServer }) => {
-    // Only modify client-side webpack config for Electron
-    if (!isServer && process.env.NEXT_PUBLIC_IS_ELECTRON === 'true') {
-      // Set the public path for dynamic imports to use relative paths
-      config.output.publicPath = './_next/';
-    }
-    return config;
-  },
+
   
   // Disable server components for Electron compatibility
   experimental: {
@@ -53,6 +45,14 @@ const nextConfig = {
         path: false,
         os: false,
       };
+      
+      // Electron-specific optimizations to prevent chunk loading issues
+      if (process.env.NEXT_PUBLIC_IS_ELECTRON === 'true') {
+        console.log('Configuring webpack for Electron with asset server...');
+        
+        // Set the public path for our local asset server
+        config.output.publicPath = 'http://localhost:3001/_next/';
+      }
     }
     return config;
   },

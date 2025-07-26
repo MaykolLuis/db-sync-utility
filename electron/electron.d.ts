@@ -98,6 +98,21 @@ interface ElectronAPI {
     timestamp?: number;
     error?: string;
   }>;
+
+  // Auto-updater API
+  updater: {
+    checkForUpdates: () => Promise<{ success: boolean; available?: boolean; version?: string; error?: string }>;
+    downloadUpdate: () => Promise<{ success: boolean; error?: string }>;
+    installUpdate: () => Promise<{ success: boolean; error?: string }>;
+    quitAndInstall: () => Promise<void>;
+    getStatus: () => Promise<{ success: boolean; status?: { checking: boolean; downloaded: boolean; currentVersion: string }; error?: string }>;
+    onUpdateStatus: (callback: (status: { checking: boolean; downloaded: boolean; currentVersion: string; downloading?: boolean; downloadProgress?: number }) => void) => void;
+    onUpdateAvailable: (callback: (info: { version: string; releaseNotes?: string; releaseDate?: string }) => void) => void;
+    onUpdateDownloaded: (callback: (info: { version: string; releaseNotes?: string; releaseDate?: string }) => void) => void;
+    onUpdateError: (callback: (error: { message: string; stack?: string }) => void) => void;
+    removeAllListeners: () => void;
+    removeUpdateStatusListener: () => void;
+  };
 }
 
 // Extend the Window interface

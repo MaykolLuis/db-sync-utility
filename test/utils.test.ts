@@ -3,6 +3,8 @@
  * Tests version incrementing, file operations, and file size utilities
  */
 
+/// <reference types="jest" />
+
 import { getNextVersionNumber } from '../app/lib/version-utils';
 import { copyFilesWithProgress, CopyResult } from '../app/lib/file-utils';
 import { formatFileSize, getDirectorySize, getFormattedDirectorySize } from '../lib/utils/file-size-utils';

@@ -20,7 +20,6 @@ export function AnimatedHeader({ onOpenHistory, onOpenSearch, onOpenShortcuts }:
       y: 0,
       transition: {
         duration: 0.8,
-        ease: [0.6, -0.05, 0.01, 0.99],
         staggerChildren: 0.1
       }
     }
@@ -33,8 +32,7 @@ export function AnimatedHeader({ onOpenHistory, onOpenSearch, onOpenShortcuts }:
       y: 0, 
       scale: 1,
       transition: {
-        duration: 0.6,
-        ease: [0.6, -0.05, 0.01, 0.99]
+        duration: 0.6
       }
     }
   };
@@ -46,7 +44,6 @@ export function AnimatedHeader({ onOpenHistory, onOpenSearch, onOpenShortcuts }:
       rotate: 0,
       transition: {
         duration: 1,
-        ease: [0.6, -0.05, 0.01, 0.99],
         delay: 0.2
       }
     }
@@ -58,8 +55,7 @@ export function AnimatedHeader({ onOpenHistory, onOpenSearch, onOpenShortcuts }:
       opacity: 1, 
       x: 0,
       transition: {
-        duration: 0.5,
-        ease: [0.6, -0.05, 0.01, 0.99]
+        duration: 0.5
       }
     }
   };

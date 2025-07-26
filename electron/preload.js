@@ -111,10 +111,6 @@ contextBridge.exposeInMainWorld('electron', {
     }
   },
   
-  loginSuccess: () => {
-    log.info('Login success triggered');
-    ipcRenderer.send('login-success');
-  },
   // Backup creation
   createBackup: async (sourcePath, targetPaths) => {
     log.info(`Creating backups before copying from ${sourcePath} to targets`);
@@ -498,6 +494,27 @@ contextBridge.exposeInMainWorld('electron', {
         log.error('Error getting breadcrumbs:', error);
         return { success: false, error: error.message };
       });
+    }
+  },
+
+  // Authentication state management
+  setAuthenticationState: async (isAuthenticated, username) => {
+    log.info('Setting authentication state:', { isAuthenticated, username });
+    try {
+      return await ipcRenderer.invoke('set-authentication-state', { isAuthenticated, username });
+    } catch (error) {
+      log.error('Error setting authentication state:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  getAuthenticationState: async () => {
+    log.info('Getting authentication state');
+    try {
+      return await ipcRenderer.invoke('get-authentication-state');
+    } catch (error) {
+      log.error('Error getting authentication state:', error);
+      return { success: false, isAuthenticated: false, username: null, error: error.message };
     }
   }
 });

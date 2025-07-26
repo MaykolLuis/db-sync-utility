@@ -733,11 +733,8 @@
             const isValid = await window.electron.verifyPassword(password);
             
             if (isValid) {
-              // Success - store auth state and redirect
-              localStorage.setItem('db-sync-authenticated', 'true');
-              
-              // Store username for display in the app
-              localStorage.setItem('db-sync-username', 'Technické oddělení');
+              // Success - store auth state via Electron IPC
+              await window.electron.setAuthenticationState(true, 'Technické oddělení');
               
               // Simulate a short delay to show the loading animation
               setTimeout(() => {
@@ -765,11 +762,10 @@
           const correctPassword = 'admin';
           
           if (password === correctPassword) {
-            // Success - store auth state and redirect
-            localStorage.setItem('db-sync-authenticated', 'true');
-            
-            // Store username for display in the app
-            localStorage.setItem('db-sync-username', 'Technické oddělení');
+            // Success - store auth state via Electron IPC (fallback)
+            if (window.electron && window.electron.setAuthenticationState) {
+              await window.electron.setAuthenticationState(true, 'Technické oddělení');
+            }
             
             // Simulate a short delay to show the loading animation
             setTimeout(() => {

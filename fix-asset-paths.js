@@ -1,36 +1,62 @@
 const fs = require('fs');
 const path = require('path');
 
-// Fix asset paths in the generated HTML files for Electron compatibility
+// Fix asset paths in all HTML files for Electron compatibility
 function fixAssetPaths() {
   const outDir = path.join(__dirname, 'out');
-  const indexPath = path.join(outDir, 'index.html');
   
   console.log('Fixing asset paths for Electron compatibility...');
   
-  if (!fs.existsSync(indexPath)) {
-    console.error('index.html not found in out directory');
+  if (!fs.existsSync(outDir)) {
+    console.error('out directory not found');
     return;
   }
   
-  // Read the HTML file
-  let htmlContent = fs.readFileSync(indexPath, 'utf-8');
+  // Function to fix paths in a single HTML file
+  function fixHtmlFile(filePath) {
+    if (!fs.existsSync(filePath)) {
+      console.log(`File not found: ${filePath}`);
+      return;
+    }
+    
+    console.log(`Fixing paths in: ${filePath}`);
+    
+    // Read the HTML file
+    let htmlContent = fs.readFileSync(filePath, 'utf-8');
+    
+    // Replace absolute paths with relative paths for _next assets
+    htmlContent = htmlContent.replace(/href="\/_next\//g, 'href="./_next/');
+    htmlContent = htmlContent.replace(/src="\/_next\//g, 'src="./_next/');
+    
+    // Fix other absolute asset paths
+    htmlContent = htmlContent.replace(/href="\/([^"]*\.css)"/g, 'href="./$1"');
+    htmlContent = htmlContent.replace(/src="\/([^"]*\.js)"/g, 'src="./$1"');
+    htmlContent = htmlContent.replace(/src="\/([^"]*\.png)"/g, 'src="./$1"');
+    htmlContent = htmlContent.replace(/src="\/([^"]*\.jpg)"/g, 'src="./$1"');
+    htmlContent = htmlContent.replace(/src="\/([^"]*\.svg)"/g, 'src="./$1"');
+    
+    // Fix any remaining absolute paths that start with /
+    htmlContent = htmlContent.replace(/href="\/(?!\/)([^"]*)"/g, 'href="./$1"');
+    htmlContent = htmlContent.replace(/src="\/(?!\/)([^"]*)"/g, 'src="./$1"');
+    
+    // Write the fixed HTML back
+    fs.writeFileSync(filePath, htmlContent, 'utf-8');
+  }
   
-  // Replace absolute paths with relative paths
-  // /_next/ -> ./_next/
-  htmlContent = htmlContent.replace(/href="\/_next\//g, 'href="./_next/');
-  htmlContent = htmlContent.replace(/src="\/_next\//g, 'src="./_next/');
+  // Fix main HTML files
+  const htmlFiles = [
+    path.join(outDir, 'index.html'),
+    path.join(outDir, 'login', 'index.html'),
+    path.join(outDir, 'settings', 'index.html'),
+    path.join(outDir, '404.html')
+  ];
   
-  // Also fix any other absolute paths that might cause issues
-  htmlContent = htmlContent.replace(/href="\/([^"]*\.css)"/g, 'href="./$1"');
-  htmlContent = htmlContent.replace(/src="\/([^"]*\.js)"/g, 'src="./$1"');
-  
-  // Write the fixed HTML back
-  fs.writeFileSync(indexPath, htmlContent, 'utf-8');
+  htmlFiles.forEach(fixHtmlFile);
   
   console.log('Asset paths fixed successfully!');
   console.log('- Converted /_next/ to ./_next/');
   console.log('- Fixed other absolute asset paths');
+  console.log('- Processed all HTML files in out directory');
 }
 
 // Run the fix
