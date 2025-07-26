@@ -26,7 +26,6 @@
     "appId": "com.db-sync-utility.app",
     "productName": "DB Sync Utility",
     "copyright": "Copyright © 2024 MaykolLuis",
-    "publisherName": "MaykolLuis",
     "files": [
       "electron/**/*",
       "out/**/*",
@@ -53,7 +52,6 @@
       ],
       "icon": "assets/icon.ico",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
-      "publisherName": "MaykolLuis",
       "verifyUpdateCodeSignature": false,
       "requestedExecutionLevel": "asInvoker"
     },
