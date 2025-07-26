@@ -1,6 +1,8 @@
 {
   "name": "db-sync-utility",
   "version": "1.0.0",
+  "description": "Electron desktop app for database file synchronization",
+  "author": "MaykolLuis",
   "private": true,
   "main": "electron/main.js",
   "scripts": {
@@ -26,9 +28,9 @@
     "files": [
       "electron/**/*",
       "out/**/*",
-      "package.json",
-      "node_modules/**/*"
+      "package.json"
     ],
+    "includeSubNodeModules": true,
     "directories": {
       "buildResources": "assets",
       "output": "dist"
@@ -86,7 +88,9 @@
     },
     "asar": false,
     "compression": "normal",
-    "publish": null
+    "publish": null,
+    "buildDependenciesFromSource": false,
+    "nodeGypRebuild": false
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
