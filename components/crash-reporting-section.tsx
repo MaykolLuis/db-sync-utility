@@ -75,6 +75,46 @@ const CrashReportingSection: React.FC<CrashReportingSectionProps> = ({ className
     }
   };
 
+  const exportCrashReports = () => {
+    try {
+      if (crashReports.length === 0) {
+        toast.error('Žádné crash reporty k exportu');
+        return;
+      }
+
+      // Create export data with timestamp
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        totalReports: crashReports.length,
+        reports: crashReports,
+        breadcrumbs: breadcrumbs
+      };
+
+      // Convert to JSON string
+      const jsonString = JSON.stringify(exportData, null, 2);
+      
+      // Create blob and download
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      // Create download link
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `crash-reports-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up
+      URL.revokeObjectURL(url);
+      
+      toast.success(`Exportováno ${crashReports.length} crash reportů`);
+    } catch (error) {
+      console.error('Error exporting crash reports:', error);
+      toast.error('Chyba při exportu crash reportů');
+    }
+  };
+
   const deleteCrashReport = async (crashId: string) => {
     try {
       if (window.electron && (window.electron as any).crashReporting) {
@@ -161,9 +201,7 @@ const CrashReportingSection: React.FC<CrashReportingSectionProps> = ({ className
         </div>
         <div className="flex items-center gap-2">
         <Button
-          onClick={() => {
-            
-          }}
+          onClick={exportCrashReports}
           disabled={loading}
           variant="outline"
           size="sm"

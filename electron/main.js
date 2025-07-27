@@ -3,7 +3,8 @@ const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const http = require('http');
-const AutoUpdateManager = require('./auto-updater');
+const autoUpdateManager = require('./auto-updater');
+const crashHandler = require('./crash-handler');
 const isDev = process.env.NODE_ENV === 'development';
 const isPackaged = app.isPackaged;
 
