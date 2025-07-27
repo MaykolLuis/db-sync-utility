@@ -449,12 +449,12 @@ export const getKeyboardShortcutsSection = () => (
             <Badge variant="outline" className="font-mono">Ctrl+Enter</Badge>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-gray-300">Historie sidebar</span>
-            <Badge variant="outline" className="font-mono">Ctrl+H</Badge>
+            <span className="text-gray-300">Documentation</span>
+            <Badge variant="outline" className="font-mono">Ctrl+D</Badge>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-gray-300">Klávesové zkratky</span>
-            <Badge variant="outline" className="font-mono">Ctrl+K</Badge>
+            <Badge variant="outline" className="font-mono">Ctrl+H</Badge>
           </div>
         </div>
       </div>

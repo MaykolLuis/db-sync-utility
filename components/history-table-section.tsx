@@ -94,6 +94,9 @@ const CSVLink = ({ data, filename, className, children }: { data: any[], filenam
     }
     
     console.log('[CSV Export] Starting export process');
+    console.log('[CSV Export] Data received:', data);
+    console.log('[CSV Export] Data length:', data?.length);
+    console.log('[CSV Export] Data sample:', data?.[0]);
     setIsExporting(true);
     exportingRef.current = true;
     
@@ -412,6 +415,48 @@ export function HistoryTableSection({ onOpenHistorySidebar }: HistoryTableSectio
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
+
+  // Prepare export data for CSVLink (all history entries)
+  const exportfullData = history.map(entry => {
+    const duration = getTotalDuration(entry);
+    const totalTargets = entry.targetLocations?.length || 0;
+    const successfulCopies = entry.copyResults ? entry.copyResults.filter(r => r.success).length : 0;
+    const failedCopies = totalTargets - successfulCopies;
+    
+    // Get detailed status information
+    const status = getEntryStatus(entry);
+    let statusDetail = status;
+    if (status === 'Částečný úspěch' && failedCopies > 0) {
+      statusDetail = `${status} (${successfulCopies}/${totalTargets} úspěšných)`;
+    }
+    
+    // Get failed locations for partial success
+    const failedLocations = entry.copyResults 
+      ? entry.copyResults
+          .filter(r => !r.success)
+          .map(r => {
+            const location = entry.targetLocations?.find(loc => loc.path === r.targetPath);
+            return location ? location.name : r.targetPath;
+          })
+          .join(', ')
+      : '';
+    
+    const formattedDuration = duration ? formatDuration(duration) : '-';
+    
+    return {
+      datum: formatDate(entry.timestamp),
+      verze: entry.version || '-',
+      popis: entry.description || '-',
+      zdroj: entry.sourcePath || '-',
+      cile: entry.targetLocations?.map(loc => `${loc.name} (${loc.path})`).join('; ') || '',
+      status: statusDetail,
+      pocetCilu: totalTargets,
+      uspesneCile: successfulCopies,
+      neuspesneCile: failedCopies,
+      celkovyCas: formattedDuration,
+      chyboveLokace: failedLocations || '-'
+    };
+  });
 
 
 
@@ -800,6 +845,131 @@ ${targets}
     }
   };
 
+  // Export all entries using the same method as exportSelectedEntries
+  const exportAllEntries = async () => {
+    setIsExporting(true);
+    
+    try {
+      console.log('=== CSV Export All Entries Debug ===');
+      console.log('Total history entries:', history.length);
+      
+      const selectedData = history.map(entry => {
+        const duration = getTotalDuration(entry);
+        const totalTargets = entry.targetLocations?.length || 0;
+        const successfulCopies = entry.copyResults ? entry.copyResults.filter(r => r.success).length : 0;
+        const failedCopies = totalTargets - successfulCopies;
+        
+        // Get detailed status information
+        const status = getEntryStatus(entry);
+        let statusDetail = status;
+        if (status === 'Částečný úspěch' && failedCopies > 0) {
+          statusDetail = `${status} (${successfulCopies}/${totalTargets} úspěšných)`;
+        }
+        
+        // Get failed locations for partial success
+        const failedLocations = entry.copyResults 
+          ? entry.copyResults
+              .filter(r => !r.success)
+              .map(r => {
+                const location = entry.targetLocations?.find(loc => loc.path === r.targetPath);
+                return location ? location.name : r.targetPath;
+              })
+              .join(', ')
+          : '';
+        
+        const formattedDuration = duration ? formatDuration(duration) : '-';
+        
+        return {
+          datum: formatDate(entry.timestamp),
+          verze: entry.version || '-',
+          popis: entry.description || '-',
+          zdroj: entry.sourcePath || '-',
+          cile: entry.targetLocations?.map(loc => `${loc.name} (${loc.path})`).join('; ') || '',
+          status: statusDetail,
+          pocetCilu: totalTargets,
+          uspesneCile: successfulCopies,
+          neuspesneCile: failedCopies,
+          celkovyCas: formattedDuration,
+          chyboveLokace: failedLocations || '-'
+        };
+      });
+      
+      const filename = `historie_aktualizaci_${new Date().toISOString().split('T')[0]}.csv`;
+      
+      // Create CSV with proper formatting for Excel compatibility
+      const headers = [
+        'Datum',
+        'Verze', 
+        'Popis',
+        'Zdrojová složka',
+        'Cílové lokace',
+        'Stav',
+        'Počet cílů',
+        'Úspěšné cíle',
+        'Neúspěšné cíle',
+        'Celkový čas',
+        'Chybové lokace'
+      ];
+      
+      const csvRows = selectedData.map(row => [
+        row.datum || '',
+        row.verze || '',
+        row.popis || '',
+        row.zdroj || '',
+        row.cile || '',
+        row.status || '',
+        row.pocetCilu?.toString() || '0',
+        row.uspesneCile?.toString() || '0',
+        row.neuspesneCile?.toString() || '0',
+        row.celkovyCas || '',
+        row.chyboveLokace || ''
+      ]);
+      
+      // Proper CSV escaping function
+      const escapeCsvValue = (value: string) => {
+        // Convert to string and handle null/undefined
+        const stringValue = String(value || '');
+        // Always quote values to ensure proper column separation
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      };
+      
+      // Create enhanced CSV content with better structure
+      const csvContent = [
+        // Headers with clear formatting
+        headers.map(escapeCsvValue).join(','),
+        // Add a separator line for visual clarity
+        headers.map(() => '"---"').join(','),
+        ...csvRows.map(row => row.map(escapeCsvValue).join(','))
+      ].join('\r\n'); // Use Windows line endings for Excel
+      
+      // Add UTF-8 BOM for proper Excel recognition of Czech characters
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { 
+        type: 'text/csv;charset=utf-8;' 
+      });
+      
+      // Create download link
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast.success(`Exportováno ${history.length} záznamů`, {
+        description: 'CSV soubor byl úspěšně vytvořen a stažen'
+      });
+    } catch (error) {
+      console.error('Error exporting all entries:', error);
+      toast.error('Chyba při exportu všech záznamů');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // Copy history data to clipboard
   const copyToClipboard = async () => {
     try {
@@ -947,14 +1117,16 @@ ${targets}
               </>
             )}
             
-            <CSVLink
-              data={exportData}
-              filename={`historie_aktualizaci_${new Date().toISOString().split('T')[0]}.csv`}
-              className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 gap-2"
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exportAllEntries}
+              disabled={isExporting}
+              className="gap-2"
             >
               <Download className="h-4 w-4" />
               Export CSV
-            </CSVLink>
+            </Button>
           </div>
         </div>
 
